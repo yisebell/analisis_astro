@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astro Analytics Pro &bull; Intelligence Dashboard</title>
+  
+  <!-- Tipografías de alta legibilidad -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    (function() {
+      try {
+        const savedTheme = localStorage.getItem('astro_theme');
+        const theme = savedTheme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- PANTALLA DE INICIO DE SESIÓN (ACCESO PRIVADO SUPABASE AUTH) -->
+  <div id="authOverlay" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-badge-icon">✦</div>
+        <div>
+          <h1 id="authTitle">ASTRO PRO</h1>
+          <span>Acceso Privado &bull; Analytics Suite</span>
+        </div>
+      </div>
+
+      <p class="auth-subtitle">
+        Inicia sesión con tu cuenta autorizada para acceder al panel histórico, laboratorio cuantitativo y tus listas guardadas.
+      </p>
+
+      <form id="authLoginForm" class="auth-form" autocomplete="on">
+        <label class="auth-field">
+          <span>Correo electrónico</span>
+          <input type="email" id="authEmail" required autocomplete="email" placeholder="tu@correo.com">
+        </label>
+
+        <label class="auth-field">
+          <span>Contraseña</span>
+          <input type="password" id="authPassword" required autocomplete="current-password" placeholder="••••••••">
+        </label>
+
+        <div id="authErrorMsg" class="auth-error" style="display:none;" role="alert"></div>
+
+        <button type="submit" id="btnAuthSubmit" class="btn-action btn-sync auth-submit-btn">
+          Iniciar sesión
+        </button>
+      </form>
+
+      <div class="auth-footnote">
+        🔒 Protegido con Supabase Auth &amp; Row Level Security. Acceso únicamente por invitación.
+      </div>
+    </div>
+  </div>
+
+  <div id="appContainer" class="app-container" style="display:none;">
+    
+    <!-- BACKDROP MÓVIL -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+    <!-- SIDEBAR DE NAVEGACIÓN -->
+    <aside id="appSidebar" class="sidebar">
+      <div class="brand-section">
+        <div class="brand-badge-icon">✦</div>
+        <div class="brand-text">
+          <h1>ASTRO PRO</h1>
+          <span>Analytics Suite</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-category">PANEL PRINCIPAL</div>
+        <button class="nav-item active" data-tab="kpis">
+          <span class="icon">📊</span>
+          <span>Visión General & KPIs</span>
+        </button>
+
+        <div class="nav-category">DESGLOSE DE CIFRAS (EXCEL)</div>
+        <button class="nav-item" data-tab="cifras4">
+          <span class="icon">🔢</span>
+          <span>4 Cifras (0000-9999)</span>
+          <span class="badge">Hoja 4C</span>
+        </button>
+        <button class="nav-item" data-tab="cifras3">
+          <span class="icon">🎯</span>
+          <span>3 Cifras (Ini / Fin)</span>
+          <span class="badge">Hoja 3C</span>
+        </button>
+        <button class="nav-item" data-tab="cifras2">
+          <span class="icon">🎲</span>
+          <span>2 Cifras (Ini / Med / Fin)</span>
+          <span class="badge">Hoja 2C</span>
+        </button>
+        <button class="nav-item" data-tab="cifras1">
+          <span class="icon">📍</span>
+          <span>1 Cifra & Posiciones</span>
+          <span class="badge">Hoja 1C</span>
+        </button>
+
+        <div class="nav-category">MATRICES & DISTANCIAS</div>
+        <button class="nav-item" data-tab="matrices">
+          <span class="icon">📐</span>
+          <span>Matrices de Posición</span>
+          <span class="badge">Calor</span>
+        </button>
+        <button class="nav-item" data-tab="distancias">
+          <span class="icon">📏</span>
+          <span>Distancias & Base 10</span>
+          <span class="badge">Saltos</span>
+        </button>
+
+        <div class="nav-category">ANÁLISIS AVANZADO & APUESTAS</div>
+        <button class="nav-item" data-tab="vecinos">
+          <span class="icon">🔮</span>
+          <span>Buscador de Vecinos</span>
+          <span class="badge">Antes/Desp</span>
+        </button>
+        <button class="nav-item" data-tab="evaluador">
+          <span class="icon">📋</span>
+          <span>Radiografía de Apuestas</span>
+          <span class="badge">Score</span>
+        </button>
+        <button class="nav-item" data-tab="pronosticos">
+          <span class="icon">⚡</span>
+          <span>Pronósticos IA</span>
+          <span class="badge">Top Pick</span>
+        </button>
+        <button class="nav-item" data-tab="secuencial">
+          <span class="icon">🔁</span>
+          <span>Predictor Secuencial</span>
+          <span class="badge">Patrones</span>
+        </button>
+        <button class="nav-item" data-tab="polinomico">
+          <span class="icon">📈</span>
+          <span>Predictor Polinómico</span>
+          <span class="badge">4 Fórmulas</span>
+        </button>
+        <button class="nav-item" data-tab="quant">
+          <span class="icon">🧪</span>
+          <span>Lab Cuantitativo (ML)</span>
+          <span class="badge" style="color:var(--accent-emerald);">Nuevo</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="auth-user-box">
+          <div class="auth-user-meta">
+            <span id="authUserEmail" class="auth-user-email" title="Usuario autenticado">-</span>
+            <span id="authUserRole" class="auth-role-badge">LECTOR</span>
+          </div>
+          <button id="btnLogout" class="btn-action auth-logout-btn" title="Cerrar sesión de forma segura">
+            🚪 Salir
+          </button>
+        </div>
+        <div class="status-indicator">
+          <div id="statusDot" class="status-dot"></div>
+          <span id="statusText">Conectando...</span>
+        </div>
+        <div>Registros: <strong id="totalDrawsText">0</strong></div>
+        <div>Actualizado: <span id="lastUpdateText">-</span></div>
+      </div>
+    </aside>
+
+    <!-- ÁREA DE CONTENIDO PRINCIPAL -->
+    <main class="content-area">
+      
+      <!-- HEADER SUPERIOR -->
+      <header class="top-header">
+        <div class="header-left">
+          <button id="btnMobileMenu" class="btn-action btn-mobile-menu" title="Abrir menú de navegación" aria-label="Menú">
+            ☰
+          </button>
+          <div class="page-title">
+            <h2 id="pageTitle">Visión General & KPIs</h2>
+            <p id="pageSub">Resumen ejecutivo de métricas clave y últimos sorteos</p>
+          </div>
+        </div>
+
+        <div class="controls-cluster">
+          <!-- Selector de Lotería -->
+          <div class="segmented-control">
+            <button id="btnLuna" class="segmented-btn active">🌙 Astro Luna</button>
+            <button id="btnSol" class="segmented-btn">☀️ Astro Sol</button>
+            <button id="btnComb" class="segmented-btn">⚡ Combinado</button>
+          </div>
+
+          <!-- Selector de Ventana Temporal -->
+          <select id="timeSelect" class="time-select" title="Filtrar sorteos por ventana">
+            <option value="all">Todo el Histórico</option>
+            <option value="1000">Últimos 1,000 sorteos</option>
+            <option value="100">Últimos 100 sorteos</option>
+            <option value="30">Últimos 30 sorteos</option>
+            <option value="10">Últimos 10 sorteos</option>
+          </select>
+
+          <!-- Acciones -->
+          <button id="btnSync" class="btn-action btn-sync" style="display:none;" title="Consultar astroluna.co y actualizar los datos en Supabase (Solo Admin)">
+            <span class="spin">🔄</span>
+            <span>Sincronizar Web</span>
+          </button>
+          <button id="btnExportExcel" class="btn-action" title="Descargar libro Excel (.xlsx) con Luna, Sol y Combinados">
+            <span>📊</span>
+            <span>Descargar Excel</span>
+          </button>
+
+          <!-- Selector Modo Claro / Oscuro -->
+          <button id="btnThemeToggle" class="btn-action btn-theme-toggle" title="Alternar entre Modo Claro y Oscuro" aria-label="Cambiar tema">
+            <span id="themeToggleIcon" class="theme-icon">☀️</span>
+            <span id="themeToggleText">Modo Claro</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENEDOR DE VISTAS (TAB PANES) -->
+      <div class="view-container">
+
+        <!-- ================================================================
+             TAB 1: VISIÓN GENERAL & KPIS
+             ================================================================ -->
+        <div id="tab-kpis" class="tab-pane active">
+          
+          <!-- Banner de Último Sorteo -->
+          <div id="lastDrawBanner" class="last-draw-banner">
+            <!-- Rellenado dinámicamente -->
+          </div>
+
+          <!-- Grid de Métricas KPI -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Sorteos Evaluados</span>
+                <span class="kpi-icon">🎲</span>
+              </div>
+              <div id="kpiTotalSorteos" class="kpi-value">0</div>
+              <div class="kpi-sub">Total de resultados en ventana seleccionada</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">4C Nunca Salidos</span>
+                <span class="kpi-icon">⏳</span>
+              </div>
+              <div id="kpiNumerosSinSalir" class="kpi-value">0</div>
+              <div class="kpi-sub">
+                Cobertura: <strong id="kpiPctCobertura">0%</strong> de los 10,000 números
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">4C Más Caliente</span>
+                <span class="kpi-icon">🔥</span>
+              </div>
+              <div id="kpiMasCaliente" class="kpi-value">----</div>
+              <div id="kpiMasCalienteSub" class="kpi-sub">Frecuencia más alta</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">4C Mayor Atraso</span>
+                <span class="kpi-icon">❄️</span>
+              </div>
+              <div id="kpiMasAtrasado" class="kpi-value">----</div>
+              <div id="kpiMasAtrasadoSub" class="kpi-sub">De los que han salido</div>
+            </div>
+          </div>
+
+          <!-- Tabla de Últimos Sorteos (Desglose Analítico Completo) -->
+          <div class="card-panel">
+            <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem;">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">⏱️</span>
+                <h3 id="titleUltimosSorteos">Últimos Sorteos (Desglose Analítico Completo)</h3>
+              </div>
+              <div class="panel-actions" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <label id="wrapCheckDistConjunto" class="toggle-check-pill" style="display:none;" title="Al activarlo en modo Combinado, Calc Diferencias, Distancias (0-5) y Dist Base 10 se calculan comparando cada sorteo con el sorteo inmediatamente anterior (sin separar Luna y Sol)">
+                  <input type="checkbox" id="checkDistConjunto" checked>
+                  <span class="toggle-check-box" aria-hidden="true"></span>
+                  <span>Distancias en conjunto (sorteo a sorteo)</span>
+                </label>
+                <label for="selectLimitUltimos" style="font-size:0.8rem;color:var(--text-muted);">Mostrar:</label>
+                <select id="selectLimitUltimos" class="time-select" style="padding:0.35rem 0.65rem;font-size:0.82rem;">
+                  <option value="10" selected>10 sorteos</option>
+                  <option value="25">25 sorteos</option>
+                  <option value="50">50 sorteos</option>
+                  <option value="100">100 sorteos</option>
+                  <option value="200">200 sorteos</option>
+                  <option value="999999">Todos los sorteos</option>
+                </select>
+                <span id="countUltimosSorteos" style="font-size:0.78rem;color:var(--text-dim);white-space:nowrap;"></span>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Lotería</th>
+                    <th>Número</th>
+                    <th>Signo</th>
+                    <th>Dígitos (1-4)</th>
+                    <th>Calc Diferencias</th>
+                    <th>Distancias (0-5)</th>
+                    <th>Dist Base 10</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyUltimos10">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 2: ANÁLISIS 4 CIFRAS (Hoja 4C)
+             ================================================================ -->
+        <div id="tab-cifras4" class="tab-pane">
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">🔢</span>
+                <h3>Directorio Completo de 4 Cifras (0000 - 9999)</h3>
+              </div>
+              <div class="panel-actions">
+                <button id="btnFilterNever4C" class="btn-action">Solo Nunca Salidos</button>
+                <input type="text" id="search4C" class="search-input" placeholder="Buscar 4 cifras (ej: 4692)...">
+              </div>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="data-table" id="tableCifras4">
+                <thead>
+                  <tr>
+                    <th data-sort="num" class="sortable-th">Número <span class="sort-icon">↕</span></th>
+                    <th data-sort="freq" class="sortable-th">Frecuencia Total <span class="sort-icon">↕</span></th>
+                    <th data-sort="diasAtraso" class="sortable-th">Días Sin Salir <span class="sort-icon">↕</span></th>
+                    <th data-sort="sorteosAtraso" class="sortable-th">Sorteos de Atraso <span class="sort-icon">↕</span></th>
+                    <th data-sort="ultimaFecha" class="sortable-th">Última Fecha <span class="sort-icon">↕</span></th>
+                    <th data-sort="freq10" class="sortable-th">Freq 10d <span class="sort-icon">↕</span></th>
+                    <th data-sort="freq100" class="sortable-th">Freq 100d <span class="sort-icon">↕</span></th>
+                    <th data-sort="freq1000" class="sortable-th">Freq 1000d <span class="sort-icon">↕</span></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCifras4">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination-cluster">
+              <span id="countCifras4">Mostrando 0-0 de 0</span>
+              <div id="paginationCifras4"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 3: ANÁLISIS 3 CIFRAS (Hoja 3C)
+             ================================================================ -->
+        <div id="tab-cifras3" class="tab-pane">
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">🎯</span>
+                <h3>Análisis de 3 Cifras: 3 Primeros vs 3 Últimos (000 - 999)</h3>
+              </div>
+              <div class="panel-actions">
+                <input type="text" id="search3C" class="search-input" placeholder="Buscar 3 cifras (ej: 692)...">
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="tableCifras3">
+                <thead>
+                  <tr>
+                    <th data-sort="num" class="sortable-th">Número <span class="sort-icon">↕</span></th>
+                    <th data-sort="freqIni" class="sortable-th">Freq 3 Primeros <span class="sort-icon">↕</span></th>
+                    <th data-sort="diasIni" class="sortable-th">Atraso 3 Primeros <span class="sort-icon">↕</span></th>
+                    <th data-sort="freqFin" class="sortable-th">Freq 3 Últimos <span class="sort-icon">↕</span></th>
+                    <th data-sort="diasFin" class="sortable-th">Atraso 3 Últimos <span class="sort-icon">↕</span></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCifras3">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination-cluster">
+              <span>Listado de 1,000 combinaciones posibles</span>
+              <div id="paginationCifras3"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 4: ANÁLISIS 2 CIFRAS (Hoja 2C)
+             ================================================================ -->
+        <div id="tab-cifras2" class="tab-pane">
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">🎲</span>
+                <h3>Análisis de 2 Cifras: Primeros, Centro y Últimos (00 - 99)</h3>
+              </div>
+              <div class="panel-actions">
+                <input type="text" id="search2C" class="search-input" placeholder="Buscar 2 cifras (ej: 92)...">
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="tableCifras2">
+                <thead>
+                  <tr>
+                    <th data-sort="num" class="sortable-th">Número <span class="sort-icon">↕</span></th>
+                    <th data-sort="freqIni" class="sortable-th">Freq 2 Primeros <span class="sort-icon">↕</span></th>
+                    <th data-sort="diasIni" class="sortable-th">Atraso 2 Primeros <span class="sort-icon">↕</span></th>
+                    <th data-sort="freqMid" class="sortable-th">Freq 2 Centro <span class="sort-icon">↕</span></th>
+                    <th data-sort="diasMid" class="sortable-th">Atraso 2 Centro <span class="sort-icon">↕</span></th>
+                    <th data-sort="freqFin" class="sortable-th">Freq 2 Últimos <span class="sort-icon">↕</span></th>
+                    <th data-sort="diasFin" class="sortable-th">Atraso 2 Últimos <span class="sort-icon">↕</span></th>
+                    <th data-sort="totalFreq" class="sortable-th">Frecuencia Total <span class="sort-icon">↕</span></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCifras2">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination-cluster">
+              <span>Listado completo de terminales 00 a 99</span>
+              <div id="paginationCifras2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 5: ANÁLISIS 1 CIFRA (Hoja 1C)
+             ================================================================ -->
+        <div id="tab-cifras1" class="tab-pane">
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">📍</span>
+                <h3>Frecuencia y Atraso por Dígito y Posición (0 al 9)</h3>
+              </div>
+              <div class="panel-actions">
+                <div class="delay-legend">
+                  <span class="delay-legend-item">
+                    <span class="delay-badge delay-recent" style="padding:0.15rem 0.45rem;font-size:0.72rem;"><span class="delay-dot"></span>Muy reciente (≤ 2s)</span>
+                  </span>
+                  <span class="delay-legend-item">
+                    <span class="delay-badge delay-overdue" style="padding:0.15rem 0.45rem;font-size:0.72rem;"><span class="delay-dot"></span>Muy atrasado (≥ 15s)</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="tableCifras1">
+                <thead>
+                  <tr>
+                    <th data-sort="num" class="sortable-th" style="text-align:center;">Dígito <span class="sort-icon">↕</span></th>
+                    <th data-sort="p0_freq" class="sortable-th">P1 Freq <span class="sort-icon">↕</span></th>
+                    <th data-sort="p0_atraso" class="sortable-th">P1 Atraso <span class="sort-icon">↕</span></th>
+                    <th data-sort="p0_score" class="sortable-th">P1 Score <span class="sort-icon">↕</span></th>
+                    <th data-sort="p1_freq" class="sortable-th">P2 Freq <span class="sort-icon">↕</span></th>
+                    <th data-sort="p1_atraso" class="sortable-th">P2 Atraso <span class="sort-icon">↕</span></th>
+                    <th data-sort="p1_score" class="sortable-th">P2 Score <span class="sort-icon">↕</span></th>
+                    <th data-sort="p2_freq" class="sortable-th">P3 Freq <span class="sort-icon">↕</span></th>
+                    <th data-sort="p2_atraso" class="sortable-th">P3 Atraso <span class="sort-icon">↕</span></th>
+                    <th data-sort="p2_score" class="sortable-th">P3 Score <span class="sort-icon">↕</span></th>
+                    <th data-sort="p3_freq" class="sortable-th">P4 Freq <span class="sort-icon">↕</span></th>
+                    <th data-sort="p3_atraso" class="sortable-th">P4 Atraso <span class="sort-icon">↕</span></th>
+                    <th data-sort="p3_score" class="sortable-th">P4 Score <span class="sort-icon">↕</span></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCifras1">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 6: MATRICES DE POSICIÓN Y CALOR (Hoja Matrices)
+             ================================================================ -->
+        <div id="tab-matrices" class="tab-pane">
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">📐</span>
+                <h3>Mapa de Calor Posicional (Frecuencia y % Relativo)</h3>
+              </div>
+              <div class="panel-actions">
+                <label style="font-size:0.8rem;color:var(--text-muted);">Ventana:</label>
+                <select id="matrixWindowSelect" class="time-select">
+                  <option value="10">Últimos 10 días</option>
+                  <option value="100" selected>Últimos 100 días</option>
+                  <option value="1000">Últimos 1,000 días</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="matrices-grid">
+              <!-- Matriz Heatmap 10x4 -->
+              <div class="table-responsive">
+                <table class="heatmap-table">
+                  <thead>
+                    <tr>
+                      <th>Dígito</th>
+                      <th>Posición 1</th>
+                      <th>Posición 2</th>
+                      <th>Posición 3</th>
+                      <th>Posición 4</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyMatrices">
+                    <!-- Inyectado por JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Tabla de Pares más y menos frecuentes (Pos 3 y 4) -->
+              <div class="table-responsive">
+                <h4 style="font-size:0.9rem;margin-bottom:0.75rem;color:var(--text-muted);">
+                  Top Pares en Últimos Dos Dígitos (Pos 3 - 4)
+                </h4>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Par</th>
+                      <th>Frecuencia</th>
+                      <th>% Ocurrencia</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyParesRanking">
+                    <!-- Inyectado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 7: DISTANCIAS & DISTANCIAS BASE 10
+             ================================================================ -->
+        <div id="tab-distancias" class="tab-pane">
+          <div class="matrices-grid">
+
+            <!-- ============================================================ -->
+            <!-- RANKING BASE 10 — PRIMERO, ancho completo                    -->
+            <!-- ============================================================ -->
+            <div class="card-panel" style="grid-column: 1 / -1;">
+              <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem;">
+                <div class="panel-title">
+                  <span style="font-size:1.2rem;">🔢</span>
+                  <h3>Ranking de Patrones en Distancias Base 10</h3>
+                </div>
+                <div class="panel-actions" style="display:flex;align-items:center;gap:0.75rem;">
+                  <label id="wrapCheckDistConjuntoTabDist" class="toggle-check-pill" style="display:none;" title="Al activarlo en modo Combinado, las diferencias y distancias se calculan comparando cada sorteo con el sorteo inmediatamente anterior (sin separar Luna y Sol)">
+                    <input type="checkbox" id="checkDistConjuntoTabDist" checked>
+                    <span class="toggle-check-box" aria-hidden="true"></span>
+                    <span>Distancias en conjunto (sorteo a sorteo)</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Selector de cifras -->
+              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;">Cifras:</span>
+                  <div class="segmented-control">
+                    <button type="button" class="segmented-btn" data-cifras-db10="4">4 cifras</button>
+                    <button type="button" class="segmented-btn" data-cifras-db10="3">3 cifras</button>
+                    <button type="button" class="segmented-btn" data-cifras-db10="2">2 cifras</button>
+                    <button type="button" class="segmented-btn" data-cifras-db10="1">1 cifra</button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;">Posición:</span>
+                  <div class="segmented-control">
+                    <button type="button" class="segmented-btn" data-posicion-db10="inicio">Al inicio</button>
+                    <button type="button" class="segmented-btn active" data-posicion-db10="final">Al final</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Patrón Base 10</th>
+                      <th>Frecuencia Histórica</th>
+                      <th>% Histórico</th>
+                      <th>Atraso en Sorteos</th>
+                      <th title="Número resultante de sumar el patrón Base 10 dígito a dígito al último sorteo (mod 10)">Proyección (último + patrón)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyBase10">
+                    <!-- Inyectado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- BUSCADOR DE PATRONES BASE 10 POR DÍGITOS                     -->
+            <!-- ============================================================ -->
+            <div class="card-panel" style="grid-column: 1 / -1;">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span style="font-size:1.2rem;">🔍</span>
+                  <h3>Buscador de Patrones Base 10 por Dígitos</h3>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;">
+                <input type="text" id="inputBuscadorDB10" class="search-input"
+                       placeholder="Buscar Base 10 (ej: *14 → termina en 14, 14* → empieza, 6214 → exacto)"
+                       style="max-width:400px;" maxlength="5">
+                <button id="btnBuscarDB10" class="btn-action">🔍 Buscar</button>
+                <button id="btnLimpiarDB10" class="btn-action" style="background:var(--bg-input);color:var(--text-dim);">✖ Limpiar</button>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Patrón Base 10</th>
+                      <th>Frecuencia Histórica</th>
+                      <th>Atraso (sorteos)</th>
+                      <th>Estado</th>
+                      <th title="Número resultante de sumar el patrón Base 10 dígito a dígito al último sorteo (mod 10)">Proyección (último + patrón)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyBuscadorDB10">
+                    <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:1rem;">Ingresa un patrón para buscar.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- MAYOR PROBABILIDAD PROYECTADA                                -->
+            <!-- ============================================================ -->
+            <div class="card-panel">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span style="font-size:1.2rem;">📏</span>
+                  <h3>Mayor Probabilidad de Distancias (0 a 5)</h3>
+                </div>
+              </div>
+              <p style="font-size:0.75rem;color:var(--text-muted)">
+                Calculado promediando las frecuencias relativas en ventanas de 10, 100, 1000 días e histórico.
+              </p>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Salto</th>
+                      <th>Pos 1</th>
+                      <th>Pos 2</th>
+                      <th>Pos 3</th>
+                      <th>Pos 4</th>
+                      <th>Promedio General</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyMayorProb">
+                    <!-- Inyectado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- TUPLAS MÁS REPETIDAS                                         -->
+            <!-- ============================================================ -->
+            <div class="card-panel">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span style="font-size:1.2rem;">🧩</span>
+                  <h3>Tuplas de Distancia más Frecuentes</h3>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Tupla (d1-d2-d3-d4)</th>
+                      <th>Repeticiones</th>
+                      <th>% Frecuencia</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyTuplas">
+                    <!-- Inyectado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- ESTADÍSTICAS AVANZADAS DE BASE 10                            -->
+            <!-- ============================================================ -->
+            <div class="card-panel" style="grid-column: 1 / -1;" id="cardEstadisticasAvanzadasDB10">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span style="font-size:1.2rem;">📊</span>
+                  <h3>Estadísticas Avanzadas de Base 10</h3>
+                </div>
+              </div>
+
+              <!-- a) Distribución por dígito inicial -->
+              <h4 style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem;text-transform:uppercase;letter-spacing:0.05em;">
+                Distribución por Dígito Inicial (0–9)
+              </h4>
+              <div id="distDecilDB10" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.5rem;margin-bottom:1.25rem;">
+                <!-- Inyectado por JS -->
+              </div>
+
+              <!-- b) Coeficiente de concentración -->
+              <h4 style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem;text-transform:uppercase;letter-spacing:0.05em;">
+                Concentración de Frecuencias (Gini simplificado)
+              </h4>
+              <div id="giniDB10" class="kpi-grid" style="margin-bottom:1.25rem;">
+                <!-- Inyectado por JS -->
+              </div>
+
+              <!-- c) Patrones en racha -->
+              <h4 style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem;text-transform:uppercase;letter-spacing:0.05em;">
+                🔥 Patrones Base 10 en Racha (últimos 10 sorteos vs. promedio histórico)
+              </h4>
+              <div id="rachaDB10" class="kpi-grid" style="margin-bottom:1.25rem;">
+                <!-- Inyectado por JS -->
+              </div>
+
+              <!-- d) Tabla: Base 10 sin salir hace más tiempo -->
+              <h4 style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.5rem;text-transform:uppercase;letter-spacing:0.05em;">
+                Top 10 Patrones con Mayor Atraso (≥2 apariciones históricas)
+              </h4>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Patrón</th>
+                      <th>Veces Históricas</th>
+                      <th>Atraso (sorteos)</th>
+                      <th>% Frecuencia Histórica</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyAtrasoMaxDB10">
+                    <!-- Inyectado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 8: BUSCADOR DE VECINOS & SIGNOS (Hoja anterior_proximo)
+             ================================================================ -->
+        <div id="tab-vecinos" class="tab-pane">
+          <!-- Selector de Modo / Sub-tabs -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+            <div class="segmented-control" id="controlVecinosMode">
+              <button type="button" class="segmented-btn active" id="btnSubVecinosNum" data-subtab="num">
+                <span>🔮</span> Vecinos por Número
+              </button>
+              <button type="button" class="segmented-btn" id="btnSubVecinosB10" data-subtab="b10">
+                <span>📏</span> Vecinos por Distancia Base 10
+              </button>
+              <button type="button" class="segmented-btn" id="btnSubVecinosAmbos" data-subtab="ambos">
+                <span>📑</span> Ver Ambos
+              </button>
+            </div>
+            <div style="font-size:0.8rem;color:var(--text-muted);display:flex;align-items:center;gap:0.5rem;">
+              <span>Último Sorteo:</span>
+              <span id="badgeUltimoSorteoRef" class="badge" style="background:rgba(99,102,241,0.2);color:var(--accent-cyan);font-weight:700;">----</span>
+              <span id="badgeUltimaDB10Ref" class="badge" style="background:rgba(16,185,129,0.2);color:#34d399;font-weight:700;">DB10: ----</span>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 1: VECINOS POR NÚMERO -->
+          <div id="cardVecinosNum" class="card-panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">🔮</span>
+                <h3>Buscador de Vecinos por Número: Sorteo Anterior, Ahora y Posterior</h3>
+              </div>
+              <div class="panel-actions" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <button id="btnUltimoNumeroVecinos" class="btn-action" style="padding:0.4rem 0.75rem;font-size:0.8rem;" title="Restaurar el último número salido en el sorteo">🎯 Último Sorteo</button>
+                <input type="text" id="inputVecinos" class="search-input" placeholder="Número (ej: 0883, 883 o 83)">
+                <button id="btnSearchVecinos" class="btn-action">Buscar Transiciones</button>
+              </div>
+            </div>
+
+            <!-- Métricas del número consultado -->
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Número Analizado</span></div>
+                <div id="vecinosNumeroConsultado" class="kpi-value">----</div>
+                <div class="kpi-sub">Búsqueda exacta / terminación</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Apariciones Totales</span></div>
+                <div id="vecinosTotalSalidas" class="kpi-value">0</div>
+                <div class="kpi-sub">Veces que ha salido</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Intervalo Promedio</span></div>
+                <div id="vecinosPromedioIntervalo" class="kpi-value">0</div>
+                <div class="kpi-sub">Frecuencia media de reaparición</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Atraso Actual</span></div>
+                <div id="vecinosSorteosDesdeUltimo" class="kpi-value">0</div>
+                <div class="kpi-sub">Sorteos transcurridos al día</div>
+              </div>
+            </div>
+
+            <!-- Distribución de signos zodiacales -->
+            <div style="margin-top:0.75rem;">
+              <h4 style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">Signos Zodiacales en que ha salido:</h4>
+              <div id="vecinosSignosRanking" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:0.5rem;"></div>
+            </div>
+
+            <!-- Tabla de Transiciones Números -->
+            <div class="table-responsive" style="margin-top:1rem;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width:33%;">Sorteo Anterior (ANTES)</th>
+                    <th style="width:34%;text-align:center;">Sorteo Evaluado (AHORA)</th>
+                    <th style="width:33%;">Sorteo Posterior (DESPUÉS)</th>
+                    <th style="text-align:center;">Intervalo</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyVecinos">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 2: VECINOS POR DISTANCIA BASE 10 -->
+          <div id="cardVecinosB10" class="card-panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">📏</span>
+                <h3>Buscador de Vecinos por Distancia Base 10 (Transición de Patrones)</h3>
+              </div>
+              <div class="panel-actions" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <button id="btnUltimaDB10Vecinos" class="btn-action" style="padding:0.4rem 0.75rem;font-size:0.8rem;" title="Restaurar la última distancia base 10 registrada">🎯 Última DB10</button>
+                <input type="text" id="inputVecinosB10" class="search-input" placeholder="Distancia Base 10 (ej: 6214 o 214)">
+                <button id="btnSearchVecinosB10" class="btn-action">Buscar Transiciones DB10</button>
+              </div>
+            </div>
+
+            <!-- Métricas de la Distancia Base 10 consultada -->
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Distancia Base 10</span></div>
+                <div id="vecinosB10Consultado" class="kpi-value" style="color:#34d399;">----</div>
+                <div class="kpi-sub">Patrón de distancias consultado</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Apariciones Totales</span></div>
+                <div id="vecinosB10TotalSalidas" class="kpi-value">0</div>
+                <div class="kpi-sub">Veces que se ha generado este patrón</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Intervalo Promedio</span></div>
+                <div id="vecinosB10PromedioIntervalo" class="kpi-value">0</div>
+                <div class="kpi-sub">Frecuencia media de reaparición</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header"><span class="kpi-title">Atraso Actual</span></div>
+                <div id="vecinosB10SorteosDesdeUltimo" class="kpi-value">0</div>
+                <div class="kpi-sub">Sorteos desde la última vez</div>
+              </div>
+            </div>
+
+            <!-- Estadísticas complementarias DB10: Signos y DB10 Posteriores Recurrentes -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:1rem;margin-top:0.75rem;">
+              <div>
+                <h4 style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">Signos Zodiacales en que ha ocurrido:</h4>
+                <div id="vecinosB10SignosRanking" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:0.4rem;"></div>
+              </div>
+              <div>
+                <h4 style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">Patrones DB10 más repetidos en el Sorteo Posterior (DESPUÉS):</h4>
+                <div id="vecinosB10PosterioresRanking" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+                <div style="margin-top:0.6rem;">
+                  <h5 style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.3rem;">Terminaciones 2D más frecuentes en el sorteo posterior:</h5>
+                  <div id="vecinosB10TermPosteriores" style="display:flex;flex-wrap:wrap;gap:0.35rem;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabla de Transiciones DB10 -->
+            <div class="table-responsive" style="margin-top:1rem;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width:33%;">Sorteo Anterior (ANTES)</th>
+                    <th style="width:34%;text-align:center;">Sorteo Evaluado (AHORA - DB10)</th>
+                    <th style="width:33%;">Sorteo Posterior (DESPUÉS)</th>
+                    <th style="text-align:center;">Intervalo</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyVecinosB10">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 9: RADIOGRAFÍA DE APUESTAS (tabla_analisis_numeros.py)
+             ================================================================ -->
+        <div id="tab-evaluador" class="tab-pane">
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">📋</span>
+                <h3>Evaluador de Listas de Números para Apuestas</h3>
+              </div>
+              <div class="panel-actions">
+                <input type="file" id="fileTxtEvaluador" accept=".txt,text/plain" multiple style="display:none;">
+                <button id="btnCargarTxtEvaluador" class="btn-action" title="Cargar uno o varios ficheros TXT (selección múltiple)">
+                  📁 Cargar Archivo(s) .TXT
+                </button>
+                <button id="btnRecargarDefaultEvaluador" class="btn-action" title="Cargar tu lista guardada en Supabase (o la lista predeterminada)">
+                  ☁️ Mi Lista Guardada
+                </button>
+                <button id="btnGuardarListaNube" class="btn-action" title="Guardar esta lista en tu cuenta de Supabase para usarla en PC y móvil">
+                  💾 Guardar en Nube
+                </button>
+                <button id="btnLimpiarEvaluador" class="btn-action" title="Limpiar lista actual">
+                  🗑️ Limpiar
+                </button>
+                <button id="btnRunEvaluador" class="btn-action btn-sync">
+                  ⚡ Evaluar Lista
+                </button>
+              </div>
+            </div>
+
+            <div class="evaluator-input-group">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <label style="font-size:0.8rem;color:var(--text-muted);">
+                  Ingresa tus números de 4 cifras (o carga uno o más archivos .txt):
+                </label>
+                <span id="evaluadorFileStatus" class="file-status-badge" style="display:none;"></span>
+              </div>
+              <textarea id="inputEvaluador" class="evaluator-textarea" placeholder="Pega números de 4 cifras aquí o arrastra uno o más archivos .txt... Los números repetidos se omiten automáticamente.">0859, 0539, 8370, 3614, 5842, 4874, 0610, 7147, 5173, 9105, 0517, 1051, 9032, 8344, 3502, 8071, 1793, 8428, 0470, 4104, 8621, 9159, 9684, 0542, 6868, 6435, 8450, 8318, 8737, 0802, 0208, 5637, 9580, 8624, 8122, 0869, 5341, 5340, 8047, 8078, 8362, 8363, 8155, 2645</textarea>
+            </div>
+
+            <!-- Barra de búsqueda y combinaciones en la lista -->
+            <div class="evaluator-search-toolbar">
+              <div class="search-input-box">
+                <span class="search-box-icon">🔍</span>
+                <input type="text" id="searchEvaluador" class="search-input search-input-wide" placeholder="Buscar número o patrón (ej: 185, 92, 4692)..." autocomplete="off">
+                <button id="btnClearSearchEvaluador" class="btn-clear-search" title="Limpiar búsqueda" style="display:none;">✕</button>
+              </div>
+
+              <div class="evaluator-filter-group">
+                <label for="evaluadorPageSizeSelect" style="font-size:0.78rem;color:var(--text-muted);">Filas:</label>
+                <select id="evaluadorPageSizeSelect" class="time-select" style="padding:0.35rem 0.6rem;font-size:0.8rem;">
+                  <option value="25" selected>25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="999999">Todos</option>
+                </select>
+              </div>
+
+              <div id="evaluadorCountSummary" style="font-size:0.8rem;color:var(--text-muted);margin-left:auto;"></div>
+            </div>
+
+            <!-- Feedback de combinaciones evaluadas -->
+            <div id="evaluadorSearchFeedback" class="search-feedback-card" style="display:none;"></div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="tableEvaluador">
+                <thead>
+                  <tr>
+                    <th data-sort="rank" class="sortable-th">Rank <span class="sort-icon">↕</span></th>
+                    <th data-sort="numero" class="sortable-th">Número <span class="sort-icon">↕</span></th>
+                    <th data-sort="score" class="sortable-th">Score Probabilidad <span class="sort-icon">↕</span></th>
+                    <th data-sort="freq4" class="sortable-th">4 Cifras (Freq / Atraso) <span class="sort-icon">↕</span></th>
+                    <th data-sort="freq3Fin" class="sortable-th">3C Últimos (Freq / Atraso) <span class="sort-icon">↕</span></th>
+                    <th data-sort="freq2Fin" class="sortable-th">2C Últimos (Freq / Atraso) <span class="sort-icon">↕</span></th>
+                    <th data-sort="atraso3Ini" class="sortable-th">3C Primeros Atraso <span class="sort-icon">↕</span></th>
+                    <th data-sort="atraso2Ini" class="sortable-th">2C Primeros Atraso <span class="sort-icon">↕</span></th>
+                    <th data-sort="atraso2Mid" class="sortable-th">2C Centro Atraso <span class="sort-icon">↕</span></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyEvaluador">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination-cluster" style="margin-top:1rem;">
+              <span id="evaluadorPaginationInfo">Listado de números evaluados</span>
+              <div id="paginationEvaluador"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 10: PRONÓSTICOS & PROYECCIONES INTELIGENTES
+             ================================================================ -->
+        <div id="tab-pronosticos" class="tab-pane">
+
+          <!-- Barra superior de Recálculo -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;padding:1rem 1.25rem;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+              <button id="btnRecalcularPronosticos" class="btn-action btn-sync" style="font-size:0.95rem;padding:0.6rem 1.4rem;">
+                <span class="spin">🔄</span>
+                <span>Recalcular Todos los Pronósticos</span>
+              </button>
+              <span id="pronosticosTimestamp" style="font-size:0.8rem;color:var(--text-muted);">
+                Sin calcular aún
+              </span>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-dim);">
+              Basado en Ley de los Grandes Números (JEV) y Matrices Posicionales
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 1: SUPER COMBINACIONES TOP 5 (4 Cifras + Signo)
+               ============================================================ -->
+          <div class="card-panel" style="margin-bottom:2rem;border-color:rgba(99, 102, 241, 0.4);box-shadow:0 8px 30px -4px rgba(99, 102, 241, 0.15);">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.4rem;">✨</span>
+                <div>
+                  <h3 style="font-size:1.25rem;color:var(--text-main);">Super Picks: Combinaciones Top 5 (4 Cifras + Signo)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Cruce algorítmico entre los pares con mayor déficit y atraso iniciales (Top 5 2C Ini) y terminales (Top 5 2C Fin) asociados a los signos más rezagados.
+                  </p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <span class="badge badge-warning" style="font-size:0.75rem;padding:0.35rem 0.7rem;">Top Recomendados</span>
+              </div>
+            </div>
+
+            <!-- Grid de Tarjetas Top Combinaciones -->
+            <div id="gridSuperCombinaciones" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:1rem;margin-top:1rem;margin-bottom:1.5rem;">
+              <!-- Inyectado por JS -->
+            </div>
+
+            <!-- Tabla de las 25 Combinaciones Generadas -->
+            <div class="table-responsive">
+              <h4 style="font-size:0.9rem;margin-bottom:0.75rem;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between;">
+                <span>Matriz Completa de las 25 Combinaciones Top 5 × Top 5</span>
+                <span style="font-size:0.75rem;color:var(--text-dim);">Ordenadas por Score Global</span>
+              </h4>
+              <table class="data-table" id="tableCombinacionesTop5">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>4 Cifras</th>
+                    <th>2C Inicial</th>
+                    <th>2C Final</th>
+                    <th>Signo Sugerido</th>
+                    <th>Score Global</th>
+                    <th>Historial 4C</th>
+                    <th>Fundamentación</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCombinacionesTop5">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 2: PREDICCIONES JEV — PRIMERAS 2 CIFRAS (00-99)
+               ============================================================ -->
+          <div class="card-panel" style="margin-bottom:2rem;">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">🎲</span>
+                <div>
+                  <h3>Predicciones JEV — Primeras 2 Cifras (Posiciones 1 y 2)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Detección de pares iniciales (00-99) en déficit estadístico y ciclos de atraso prolongados.
+                  </p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <span class="badge badge-info" style="font-size:0.72rem;">2 Cifras Iniciales</span>
+              </div>
+            </div>
+
+            <!-- KPIs Primeras 2 Cifras -->
+            <div class="kpi-grid" id="jevIniKpiGrid" style="margin-bottom:1rem;">
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Frecuencia Esperada</span>
+                  <span class="kpi-icon">📊</span>
+                </div>
+                <div id="jevIniFrecEsperada" class="kpi-value">-</div>
+                <div class="kpi-sub">Salidas teóricas por par (total / 100)</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Mayor Déficit Inicial</span>
+                  <span class="kpi-icon">🔴</span>
+                </div>
+                <div id="jevIniMayorDeficit" class="kpi-value">--</div>
+                <div id="jevIniMayorDeficitSub" class="kpi-sub">Par más rezagado</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Mayor Atraso Inicial</span>
+                  <span class="kpi-icon">⏳</span>
+                </div>
+                <div id="jevIniMayorAtraso" class="kpi-value">--</div>
+                <div id="jevIniMayorAtrasoSub" class="kpi-sub">Más sorteos sin salir</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Señales Dobles ⚡</span>
+                  <span class="kpi-icon">⚡</span>
+                </div>
+                <div id="jevIniDoblesSenal" class="kpi-value">0</div>
+                <div class="kpi-sub">Déficit + Tendencia Fría</div>
+              </div>
+            </div>
+
+            <!-- Tabla Top 20 Primeras 2 Cifras -->
+            <div class="table-responsive">
+              <table class="data-table" id="tableJEVIni">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Par Inicial (2C)</th>
+                    <th>Score JEV</th>
+                    <th>Frecuencia Real</th>
+                    <th>Frecuencia Esperada</th>
+                    <th>Déficit</th>
+                    <th>Atraso (sorteos)</th>
+                    <th>Atraso Relativo</th>
+                    <th>Tendencia</th>
+                    <th>Fundamentación</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyJEVIni">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 3: PREDICCIONES JEV — ÚLTIMAS 2 CIFRAS (00-99)
+               ============================================================ -->
+          <div class="card-panel" style="margin-bottom:2rem;">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">⚖️</span>
+                <div>
+                  <h3>Predicciones JEV — Últimas 2 Cifras (Posiciones 3 y 4)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Terminales de dos cifras con mayor probabilidad de equilibrio por ley de grandes números.
+                  </p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <span class="badge badge-info" style="font-size:0.72rem;">2 Cifras Finales</span>
+              </div>
+            </div>
+
+            <!-- KPIs Últimas 2 Cifras -->
+            <div class="kpi-grid" id="jevKpiGrid" style="margin-bottom:1rem;">
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Frecuencia Esperada</span>
+                  <span class="kpi-icon">📊</span>
+                </div>
+                <div id="jevFrecEsperada" class="kpi-value">-</div>
+                <div class="kpi-sub">Salidas teóricas por par (total / 100)</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Mayor Déficit Terminal</span>
+                  <span class="kpi-icon">🔴</span>
+                </div>
+                <div id="jevMayorDeficit" class="kpi-value">--</div>
+                <div id="jevMayorDeficitSub" class="kpi-sub">Par más rezagado</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Mayor Atraso Terminal</span>
+                  <span class="kpi-icon">⏳</span>
+                </div>
+                <div id="jevMayorAtraso" class="kpi-value">--</div>
+                <div id="jevMayorAtrasoSub" class="kpi-sub">Más sorteos sin salir</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Señales Dobles ⚡</span>
+                  <span class="kpi-icon">⚡</span>
+                </div>
+                <div id="jevDoblesSenal" class="kpi-value">0</div>
+                <div class="kpi-sub">Déficit + Tendencia Fría</div>
+              </div>
+            </div>
+
+            <!-- Tabla Top 20 Últimas 2 Cifras -->
+            <div class="table-responsive">
+              <table class="data-table" id="tableJEV">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Par Final (2C)</th>
+                    <th>Score JEV</th>
+                    <th>Frecuencia Real</th>
+                    <th>Frecuencia Esperada</th>
+                    <th>Déficit</th>
+                    <th>Atraso (sorteos)</th>
+                    <th>Atraso Relativo</th>
+                    <th>Tendencia</th>
+                    <th>Fundamentación</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyJEV">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 4: PREDICCIONES JEV — SIGNOS ZODIACALES (12 Signos)
+               ============================================================ -->
+          <div class="card-panel" style="margin-bottom:2rem;">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">♈</span>
+                <div>
+                  <h3>Predicciones JEV — Signos Zodiacales (Ley de Equilibrio)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Equilibrio estadístico de los 12 signos zodiacales: frecuencia esperada teórica de 1 de cada 12 sorteos (8.33%).
+                  </p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <span class="badge badge-info" style="font-size:0.72rem;">12 Casas Zodiacales</span>
+              </div>
+            </div>
+
+            <!-- KPIs Signos -->
+            <div class="kpi-grid" id="jevSignosKpiGrid" style="margin-bottom:1rem;">
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Frecuencia Esperada</span>
+                  <span class="kpi-icon">📊</span>
+                </div>
+                <div id="jevSignoFrecEsperada" class="kpi-value">-</div>
+                <div class="kpi-sub">Salidas teóricas por signo (total / 12)</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Signo con Mayor Déficit</span>
+                  <span class="kpi-icon">🔴</span>
+                </div>
+                <div id="jevSignoMayorDeficit" class="kpi-value">--</div>
+                <div id="jevSignoMayorDeficitSub" class="kpi-sub">Mayor deuda de salidas</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Signo con Mayor Atraso</span>
+                  <span class="kpi-icon">⏳</span>
+                </div>
+                <div id="jevSignoMayorAtraso" class="kpi-value">--</div>
+                <div id="jevSignoMayorAtrasoSub" class="kpi-sub">Más sorteos sin salir</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-header">
+                  <span class="kpi-title">Tendencia Caliente 🔥</span>
+                  <span class="kpi-icon">🔥</span>
+                </div>
+                <div id="jevSignoMasCaliente" class="kpi-value">--</div>
+                <div id="jevSignoMasCalienteSub" class="kpi-sub">Mayor racha reciente (100d)</div>
+              </div>
+            </div>
+
+            <!-- Tabla de los 12 Signos -->
+            <div class="table-responsive">
+              <table class="data-table" id="tableJEVSignos">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Signo Zodiacal</th>
+                    <th>Score JEV</th>
+                    <th>Frecuencia Total</th>
+                    <th>Frecuencia Esperada</th>
+                    <th>Déficit</th>
+                    <th>Atraso (sorteos)</th>
+                    <th>Atraso Relativo</th>
+                    <th>Tendencia Reciente</th>
+                    <th>Fundamentación</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyJEVSignos">
+                  <!-- Inyectado por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 5: PROYECCIONES 4 CIFRAS — MOTOR POSICIONAL
+               ============================================================ -->
+          <div class="prediction-card">
+            <div class="panel-header" style="border-bottom:none;padding:0 0 1rem 0;">
+              <div>
+                <h3 class="panel-heading-main" style="font-size:1.3rem;font-weight:800;">
+                  🎯 Proyecciones 4 Cifras — Motor Estadístico Posicional
+                </h3>
+                <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.25rem;">
+                  Candidatos generados integrando los dígitos de mayor peso en la matriz posicional de 100 sorteos,
+                  las distancias modulares con mayor probabilidad proyectada y los ciclos de reaparición.
+                </p>
+              </div>
+            </div>
+
+            <div id="pronosticosList" class="prediction-list">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================================================================
+             TAB 10B: PREDICTOR SECUENCIAL (N-GRAMAS / RETRO-PATRONES)
+             ================================================================ -->
+        <div id="tab-secuencial" class="tab-pane">
+          
+          <!-- BARRA DE CONTROL Y CONTEXTO DEL PREDICTOR -->
+          <div class="card-panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="flex-wrap:wrap;gap:1rem;">
+              <div class="panel-title">
+                <span style="font-size:1.4rem;">🔁</span>
+                <div>
+                  <h3 style="font-size:1.2rem;font-weight:700;">Predictor de Secuencias Históricas</h3>
+                  <p style="font-size:0.82rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Rastrea coincidencias exactas de secuencias pasadas (desde 2 sorteos hasta la racha más larga) y predice según lo que históricamente siguió.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Controles de simulación / punto de análisis -->
+              <div class="panel-actions" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:var(--text-muted);">
+                  <span>Punto de análisis:</span>
+                  <select id="selectSorteoSecuencial" class="time-select" style="min-width:210px;font-size:0.8rem;padding:0.4rem 0.6rem;">
+                    <!-- Opciones inyectadas dinámicamente -->
+                  </select>
+                </div>
+                <button id="btnResetSorteoSecuencial" class="btn-action" title="Volver al último sorteo en vivo">
+                  <span>🔴 En Vivo (Actual)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Visualizador de la Cadena Activa (Sorteos anteriores ➔ Actual) -->
+            <div class="chain-panel-box">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;flex-wrap:wrap;gap:0.5rem;">
+                <span style="font-size:0.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">
+                  Cadena Cronológica Activa (Historial Inmediato ➔ Sorteo Base)
+                </span>
+                <span id="secuencialBadgeModo" class="badge badge-info" style="font-size:0.75rem;">
+                  Modo: En Vivo (Predicción Próximo Sorteo)
+                </span>
+              </div>
+              <div id="cadenaSorteosVisual" class="secuencial-chain-container">
+                <!-- Inyectado por JS -->
+              </div>
+            </div>
+
+            <!-- Panel de Evaluación Backtesting (Visible únicamente en simulación) -->
+            <div id="panelBacktestSecuencial" style="display:none;margin-top:1rem;background:rgba(99, 102, 241, 0.08);border:1px solid rgba(99, 102, 241, 0.35);border-radius:var(--radius-md);padding:1rem;">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+          <!-- HERO CARD: SUPER PRONÓSTICO SECUENCIAL CONSOLIDADO -->
+          <div class="prediction-card hero-prediction-card" style="margin-bottom:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1.25rem;">
+              <div>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem;">
+                  <span class="badge badge-primary" style="font-size:0.75rem;padding:0.25rem 0.6rem;">★ Pronóstico Consolidado</span>
+                  <span id="badgeFuerzaSecuencia" class="badge badge-warning" style="font-size:0.75rem;padding:0.25rem 0.6rem;">Fuerza: Alta</span>
+                </div>
+                <h2 class="panel-heading-main" style="font-size:1.35rem;font-weight:800;">
+                  Número Sugerido de 4 Cifras (Multi-Nivel Integrado)
+                </h2>
+                <p style="font-size:0.83rem;color:var(--text-muted);margin-top:0.25rem;max-width:620px;">
+                  Generado combinando los dígitos con mayor porcentaje de probabilidad acumulada tras todas las secuencias históricas coincidentes (de longitud 2 hasta la máxima racha encontrada).
+                </p>
+              </div>
+
+              <!-- Número Estrella en Gigante -->
+              <div style="text-align:right;">
+                <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:0.25rem;">
+                  Pronóstico Principal
+                </div>
+                <div id="secuencialNumeroEstrella" class="secuencial-gold-number">
+                  ----
+                </div>
+              </div>
+            </div>
+
+            <!-- KPIs de Certeza y Combinaciones Alternativas -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.08);">
+              <div style="background:rgba(255,255,255,0.03);padding:0.75rem 1rem;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;">Certeza Promedio</div>
+                <div id="secuencialConfianza" style="font-size:1.3rem;font-weight:800;color:#38bdf8;font-family:var(--font-mono);margin-top:0.15rem;">--%</div>
+                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem;">Dominancia de los dígitos #1</div>
+              </div>
+
+              <div style="background:rgba(255,255,255,0.03);padding:0.75rem 1rem;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;">Profundidad Máx Promedio</div>
+                <div id="secuencialProfundidad" style="font-size:1.3rem;font-weight:800;color:#a855f7;font-family:var(--font-mono);margin-top:0.15rem;">-- sorteos</div>
+                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem;">Longitud de patrón histórico</div>
+              </div>
+
+              <div style="background:rgba(255,255,255,0.03);padding:0.75rem 1rem;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;">2 Cifras Terminal (Top 2C)</div>
+                <div id="secuencialTop2C" style="font-size:1.3rem;font-weight:800;color:#10b981;font-family:var(--font-mono);margin-top:0.15rem;">--</div>
+                <div id="secuencialTop2CSub" style="font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem;">Terminal más repetida</div>
+              </div>
+
+              <div style="background:rgba(255,255,255,0.03);padding:0.75rem 1rem;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;">3 Cifras Terminal (Top 3C)</div>
+                <div id="secuencialTop3C" style="font-size:1.3rem;font-weight:800;color:#f59e0b;font-family:var(--font-mono);margin-top:0.15rem;">---</div>
+                <div id="secuencialTop3CSub" style="font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem;">Trío más repetido</div>
+              </div>
+            </div>
+
+            <!-- Números Alternativos Recomendados -->
+            <div style="margin-top:1rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+              <span style="font-size:0.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">
+                4 Cifras Alternativos (Cruzando 2dos lugares):
+              </span>
+              <div id="secuencialAlternativos" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <!-- Inyectado por JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- ================================================================
+               SECCIÓN: MOTOR DE CONVERGENCIA ENTRÓPICA — LOS 8 NÚMEROS DE ORO
+               ================================================================ -->
+          <div class="card-panel" style="margin-bottom:1.75rem;border-color:rgba(245, 158, 11, 0.45);background:radial-gradient(circle at top left, rgba(245, 158, 11, 0.09) 0%, var(--bg-card) 65%);">
+            <div class="panel-header" style="flex-wrap:wrap;gap:1rem;border-bottom:1px solid rgba(245, 158, 11, 0.2);padding-bottom:0.85rem;">
+              <div class="panel-title">
+                <span style="font-size:1.4rem;">🌟</span>
+                <div>
+                  <h3 style="font-size:1.25rem;font-weight:800;color:var(--text-main);">
+                    Motor de Convergencia Entrópica — Los 8 Números de Oro
+                  </h3>
+                  <p style="font-size:0.82rem;color:var(--text-muted);margin-top:0.2rem;max-width:720px;">
+                    Cierre de brecha de probabilidad: sintetiza los porcentajes máximos de todos los modelos (Secuencial, Matrices de Calor, Atrasos) junto con la <strong>fuerza de acompañamiento entre cifras</strong> (Primero con el Último D1-D4, Pareja Inicial D1-D2 y Terminal D3-D4).
+                  </p>
+                </div>
+              </div>
+              <div class="panel-actions" style="display:flex;align-items:center;gap:0.5rem;">
+                <span class="badge badge-warning" style="font-size:0.75rem;padding:0.3rem 0.65rem;">Top 8 Multidimensional</span>
+              </div>
+            </div>
+
+            <!-- BARRA DE EXPORTACIÓN DE BOLETOS (.TXT / PORTAPAPELES) -->
+            <div class="export-file-toolbar" style="margin-top:1rem;background:rgba(15, 23, 42, 0.65);border:1px solid rgba(245, 158, 11, 0.35);border-radius:var(--radius-md);padding:0.85rem 1rem;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;">
+              <div style="display:flex;align-items:center;gap:0.6rem;flex:1;min-width:240px;">
+                <span style="font-size:0.82rem;font-weight:700;color:var(--text-main);white-space:nowrap;display:flex;align-items:center;gap:0.35rem;">
+                  <span>📄</span> <span>Nombre Archivo:</span>
+                </span>
+                <input type="text" id="inputRutaExportFichero" class="time-select" style="flex:1;font-family:var(--font-mono);font-size:0.8rem;padding:0.45rem 0.75rem;border-radius:var(--radius-sm);background:rgba(0,0,0,0.25);" value="lista_numeros-3.txt" placeholder="lista_numeros-3.txt" title="Nombre del archivo .txt que se descargará en tu dispositivo">
+              </div>
+
+              <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <button id="btnGenerarRandomCifras" class="btn-action" title="Generar nuevas cifras aleatorias 2 y 3 para el número comodín">
+                  <span>🎲 Re-sortear C2 y C3</span>
+                </button>
+                <button id="btnTogglePreviewFichero" class="btn-action" title="Ver formato exacto del fichero antes de descargar">
+                  <span id="textTogglePreview">👁️ Vista Previa</span>
+                </button>
+                <button id="btnCopiarFicheroPlaywright" class="btn-action" title="Copiar los boletos al portapapeles">
+                  <span>📋 Copiar</span>
+                </button>
+                <button id="btnExportarFicheroPlaywright" class="btn-action btn-primary" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:#000;font-weight:800;border:none;box-shadow:0 0 14px rgba(245, 158, 11, 0.35);" title="Descargar los 8 favoritos + número comodín como archivo .txt">
+                  <span>⬇️ Descargar .TXT</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- CONTENEDOR VISTA PREVIA (COLAPSIBLE) -->
+            <div id="previewFicheroContainer" style="display:none;margin-top:0.75rem;background:#090d16;border:1px solid rgba(245, 158, 11, 0.3);border-radius:var(--radius-sm);padding:0.75rem 1rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
+                <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">
+                  Formato generado para el fichero Playwright:
+                </span>
+                <div style="display:flex;gap:0.4rem;align-items:center;">
+                  <span id="previewNumeroEspecialTag" class="badge badge-warning" style="font-size:0.72rem;">
+                    Comodín: ----
+                  </span>
+                  <span id="previewSignoComunTag" class="badge badge-info" style="font-size:0.72rem;">
+                    Signo: ----
+                  </span>
+                </div>
+              </div>
+              <pre id="prePreviewFichero" style="margin:0;font-family:var(--font-mono);font-size:0.82rem;color:#38bdf8;line-height:1.45;white-space:pre;overflow-x:auto;padding:0.5rem;background:rgba(0,0,0,0.3);border-radius:var(--radius-sm);"></pre>
+            </div>
+
+            <!-- Grid de las 8 Tarjetas -->
+            <div id="gridConvergenciaEntropica" class="convergencia-grid">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+          <!-- SECCIÓN: CONSOLIDADO DE DÍGITOS POR POSICIÓN (4 TARJETAS) -->
+          <div style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="margin-bottom:1rem;">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">🎯</span>
+                <div>
+                  <h3 style="font-size:1.15rem;font-weight:700;">Consolidado por Posición (D1, D2, D3, D4)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Búsqueda de la secuencia más larga ocurrida en cada posición, conteo de todas las repeticiones y asignación de porcentaje consolidado.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grid de 4 Cards (Una por posición) -->
+            <div id="gridPosicionesSecuencial" class="secuencial-positions-grid">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+          <!-- SECCIÓN: PATRONES DE 2 CIFRAS Y 3 CIFRAS TERMINALES -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:1.25rem;margin-bottom:1.5rem;">
+            
+            <!-- Card 2 Cifras Finales -->
+            <div class="card-panel">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span style="font-size:1.2rem;">🎲</span>
+                  <div>
+                    <h4 style="font-size:1rem;font-weight:700;">Secuencias de 2 Cifras (Terminales)</h4>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;">
+                      Patrones de pares terminales hacia atrás y candidatos siguientes
+                    </p>
+                  </div>
+                </div>
+                <span id="badgeLmax2C" class="badge badge-info" style="font-size:0.72rem;">Longitud 2</span>
+              </div>
+
+              <div id="contenido2CSecuencial">
+                <!-- Inyectado por JS -->
+              </div>
+            </div>
+
+            <!-- Card 3 Cifras Finales -->
+            <div class="card-panel">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span style="font-size:1.2rem;">🎯</span>
+                  <div>
+                    <h4 style="font-size:1rem;font-weight:700;">Secuencias de 3 Cifras (Terminales)</h4>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;">
+                      Patrones de tríos terminales hacia atrás y salidas posteriores
+                    </p>
+                  </div>
+                </div>
+                <span id="badgeLmax3C" class="badge badge-info" style="font-size:0.72rem;">Longitud 1</span>
+              </div>
+
+              <div id="contenido3CSecuencial">
+                <!-- Inyectado por JS -->
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SECCIÓN: COINCIDENCIAS HISTÓRICAS DE 4 CIFRAS COMPLETAS -->
+          <div class="card-panel" style="margin-bottom:2rem;">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">🔢</span>
+                <div>
+                  <h4 style="font-size:1rem;font-weight:700;">Historial del Número Completo (4 Cifras)</h4>
+                  <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Comprueba si el número base ha salido antes en la historia y qué número exacto salió en el siguiente sorteo
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div id="contenido4CSecuencial">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================================================================
+             TAB 10B: PREDICTOR POLINÓMICO (SERIES MODULARES CRECIENTES)
+             ================================================================ -->
+        <div id="tab-polinomico" class="tab-pane">
+
+          <!-- PANEL DE CONTROLES Y VENTANA -->
+          <div class="card-panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="flex-wrap:wrap;gap:1rem;">
+              <div class="panel-title">
+                <span style="font-size:1.35rem;">📈</span>
+                <div>
+                  <h3 style="font-size:1.2rem;font-weight:800;">Predictor Polinómico &amp; Tendencias Modulares (Base 10)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Trata cada dígito como una serie en aumento continuo (ej. 9→3 = +4, 3→7 = +4, 7→4 = +7, 4→4 = +0) y ajusta 4 fórmulas estadísticas independientes por posición.
+                  </p>
+                </div>
+              </div>
+
+              <div class="panel-actions" style="display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap;">
+                <!-- Selector de Sorteo Base / Simulación -->
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <label for="selectSorteoPolinomico" style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">Punto de análisis:</label>
+                  <select id="selectSorteoPolinomico" class="time-select" style="min-width:200px;font-size:0.8rem;padding:0.4rem 0.6rem;">
+                    <!-- Opciones inyectadas dinámicamente -->
+                  </select>
+                </div>
+                <button id="btnResetSorteoPolinomico" class="btn-action" title="Volver al último sorteo en vivo">
+                  <span>🔴 En Vivo</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Barra de Ventana (W) y Modo de Gráficos -->
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.9rem;margin-top:0.9rem;padding-top:0.9rem;border-top:1px solid var(--border-subtle);">
+              <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                <span style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Ventana (últimos sorteos):</span>
+                <div class="segmented-control" id="polyWindowControl">
+                  <button type="button" class="segmented-btn active" data-poly-win="5">5 (4 saltos)</button>
+                  <button type="button" class="segmented-btn" data-poly-win="7">7 (6 saltos)</button>
+                  <button type="button" class="segmented-btn" data-poly-win="10">10 (9 saltos)</button>
+                  <button type="button" class="segmented-btn" data-poly-win="15">15 (14 saltos)</button>
+                  <button type="button" class="segmented-btn" data-poly-win="20">20 (19 saltos)</button>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                <span style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Gráficos:</span>
+                <div class="segmented-control" id="polyChartModeControl">
+                  <button type="button" class="segmented-btn active" data-poly-chart="both">📊 Ambos</button>
+                  <button type="button" class="segmented-btn" data-poly-chart="saltos">⚡ Saltos Δ(x)</button>
+                  <button type="button" class="segmented-btn" data-poly-chart="acumulada">📈 Acumulada S(t)</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cadena Cronológica (Antiguo -> Reciente) -->
+            <div class="poly-chain-box">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.55rem;flex-wrap:wrap;gap:0.5rem;">
+                <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">
+                  Secuencia Cronológica Evaluada (Más Antiguo ➔ Más Actual)
+                </span>
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                  <span id="polyBadgeConsenso" class="badge badge-warning" style="font-size:0.75rem;">Consenso: ----</span>
+                  <span id="polyBadgeModo" class="badge badge-info" style="font-size:0.75rem;">Modo: En Vivo</span>
+                </div>
+              </div>
+              <div id="polyCadenaCrono" class="poly-chain-strip">
+                <!-- Inyectado por JS -->
+              </div>
+            </div>
+
+            <!-- Panel de Validación cuando se simula un sorteo histórico -->
+            <div id="panelBacktestPolinomico" style="display:none;margin-top:1rem;background:rgba(99, 102, 241, 0.08);border:1px solid rgba(99, 102, 241, 0.35);border-radius:var(--radius-md);padding:1rem;">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+          <!-- 4 TARJETAS DE PREDICCIONES (UNA POR FÓRMULA) -->
+          <div style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="margin-bottom:0.85rem;">
+              <div class="panel-title">
+                <span style="font-size:1.25rem;">🎯</span>
+                <div>
+                  <h3 style="font-size:1.15rem;font-weight:800;">Las 4 Predicciones Polinómicas (4 Cifras)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Cada tarjeta ensambla la predicción independiente de los 4 dígitos usando su modelo matemático respectivo.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div id="polyPrediccionesGrid" class="poly-predictions-grid">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+          <!-- ANÁLISIS GRÁFICO Y FÓRMULAS POR DÍGITO (D1, D2, D3, D4) -->
+          <div style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="margin-bottom:0.85rem;">
+              <div class="panel-title">
+                <span style="font-size:1.25rem;">🔬</span>
+                <div>
+                  <h3 style="font-size:1.15rem;font-weight:800;">Fórmulas Estadísticas y Gráficos por Dígito (Posición 1 a 4)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Pasa el cursor sobre cualquier punto de los gráficos para ver el detalle exacto del salto o valor acumulado.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div id="polyDigitosGrid" class="poly-digits-grid">
+              <!-- Inyectado por JS -->
+            </div>
+          </div>
+
+          <!-- BACKTESTING COMPARATIVO DE LAS 4 FÓRMULAS -->
+          <div class="card-panel" style="margin-bottom:2rem;">
+            <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem;">
+              <div class="panel-title">
+                <span style="font-size:1.25rem;">🧪</span>
+                <div>
+                  <h3 style="font-size:1.1rem;font-weight:800;">Backtesting Histórico Comparativo (Últimos 30 Sorteos)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Evaluación real sin fuga de datos: mide cuántas veces acertó cada fórmula el dígito exacto (azar = 10%) o cercano ±1 en módulo 10 (azar = 30%).
+                  </p>
+                </div>
+              </div>
+              <span id="polyBacktestBadge" class="badge badge-primary" style="font-size:0.75rem;">30 sorteos evaluados</span>
+            </div>
+
+            <div class="poly-backtest-layout">
+              <div id="polyBacktestChart" class="poly-backtest-chart-wrap">
+                <!-- Gráfico SVG comparativo -->
+              </div>
+              <div class="table-responsive">
+                <table class="data-table" style="font-size:0.8rem;">
+                  <thead>
+                    <tr>
+                      <th>Fórmula</th>
+                      <th>Exacto Global</th>
+                      <th>Cercano (±1)</th>
+                      <th>Error Medio</th>
+                      <th>D1 / D2 / D3 / D4</th>
+                      <th>Sorteos ≥2C</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyPolyBacktest">
+                    <!-- Inyectado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================================================================
+             TAB 10C: LABORATORIO CUANTITATIVO & ML (FORENSE + WALK-FORWARD + CARTERA)
+             ================================================================ -->
+        <div id="tab-quant" class="tab-pane">
+
+          <!-- Barra de Controles del Laboratorio Cuantitativo -->
+          <div class="card-panel">
+            <div class="panel-header" style="flex-wrap:wrap;gap:1rem;">
+              <div class="panel-title">
+                <span style="font-size:1.4rem;">🧪</span>
+                <div>
+                  <h3 style="font-size:1.2rem;font-weight:800;">Laboratorio Cuantitativo, Auditoría Forense &amp; Meta-Ensamble ML</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Evaluación científica sin fuga de datos: detección de sesgo físico (χ², FDR, Factor de Bayes, CUSUM), Arena Walk-Forward de 6 modelos y optimización submodular de cobertura 2C/3C.
+                  </p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <label for="selectQuantWindow" style="font-size:0.78rem;color:var(--text-muted);">Backtest Walk-Forward:</label>
+                <select id="selectQuantWindow" class="time-select">
+                  <option value="100">Últimos 100 sorteos</option>
+                  <option value="300" selected>Últimos 300 sorteos</option>
+                  <option value="500">Últimos 500 sorteos</option>
+                </select>
+                <button id="btnRunQuant" class="btn-action btn-sync">
+                  <span class="spin">⚡</span>
+                  <span>Recalcular Lab</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Semáforo Honesto de Edge Estadístico -->
+            <div id="quantEdgeBanner" class="edge-banner edge-amarillo">
+              <div class="edge-dot"></div>
+              <div style="flex:1;">
+                <div class="edge-title">Cargando análisis cuantitativo...</div>
+                <div class="edge-desc">Ejecutando pruebas de hipótesis, validación walk-forward y optimización de cartera.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 1: CARTERA ÓPTIMA DE 8 TICKETS (COVERING DESIGN + EV) -->
+          <div class="card-panel" style="border-color:rgba(16, 185, 129, 0.4);">
+            <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem;">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">🎯</span>
+                <div>
+                  <h3>Cartera Óptima de 8 Boletos (Meta-Ensamble + Covering Design)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Maximiza la cobertura de terminales 2C y 3C únicas evitando duplicaciones que canibalizan tus propios boletos.
+                  </p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <div class="segmented-control" id="quantPortfolioModeControl">
+                  <button type="button" class="segmented-btn active" data-qport="diversificada">🛡️ Cobertura 2C/3C</button>
+                  <button type="button" class="segmented-btn" data-qport="max_prob">🎯 Máx. Verosimilitud</button>
+                </div>
+                <button id="btnExportQuantPlaywright" class="btn-action btn-sync" title="Descargar estos 8 boletos optimizados como archivo .txt y copiar al portapapeles">
+                  ⬇️ Descargar Cartera .TXT
+                </button>
+              </div>
+            </div>
+
+            <!-- KPIs de la Cartera -->
+            <div id="quantPortfolioKpis" class="kpi-grid"></div>
+
+            <!-- Grid de los 8 Tickets -->
+            <div id="quantPortfolioGrid" class="portfolio-grid"></div>
+          </div>
+
+          <!-- SECCIÓN 2: ARENA WALK-FORWARD DE MODELOS (SIN FUGA DE DATOS) -->
+          <div class="card-panel">
+            <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem;">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">🏆</span>
+                <div>
+                  <h3>Arena Walk-Forward Out-of-Sample (6 Modelos vs Azar Puro)</h3>
+                  <p id="quantArenaSub" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Evaluación estrictamente causal: cada sorteo se predice únicamente con datos anteriores.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="poly-backtest-layout">
+              <div id="quantArenaChart" class="poly-backtest-chart-wrap"></div>
+              <div class="table-responsive">
+                <table class="data-table" style="font-size:0.78rem;">
+                  <thead>
+                    <tr>
+                      <th>Modelo</th>
+                      <th>Exacto</th>
+                      <th>±1</th>
+                      <th>Log-Loss (Δ mnat)</th>
+                      <th>2C / 3C / 4C</th>
+                      <th>ROI TODOS</th>
+                      <th>Peso IA</th>
+                      <th>Próximo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyQuantArena"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Distribuciones Posteriores Calibradas (D1..D4) -->
+            <div style="margin-top:0.5rem;">
+              <h4 style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.6rem;">
+                Probabilidad Posterior Calibrada del Meta-Ensamble por Posición (Línea punteada = 10% azar)
+              </h4>
+              <div id="quantPosteriorGrid" class="quant-posterior-grid"></div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 3: AUDITORÍA FORENSE DE SESGO FÍSICO Y CAMBIO DE RÉGIMEN -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">🔬</span>
+                <div>
+                  <h3>Auditoría Forense de Aleatoriedad &amp; Detector CUSUM de Cambio de Régimen</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Comprueba si existe sesgo físico real en balotera (χ², p-valor exacto, corrección FDR Benjamini-Hochberg y Factor de Bayes).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div id="quantForensicGrid" class="forensic-grid"></div>
+            <div id="quantDependenciasStrip" class="kpi-grid" style="margin-top:0.5rem;"></div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Menú rápido flotante al hacer clic en cualquier número -->
+  <div id="numberActionPopover" class="number-popover" style="display:none;" role="menu"></div>
+
+  <!-- Contenedor flotante de Notificaciones Toast -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Cliente oficial Supabase Auth (versión fijada) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/polynomial.js"></script>
+  <script src="js/quant.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+

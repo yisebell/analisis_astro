@@ -1,0 +1,40 @@
+# Entorno y secretos (NUNCA subir a Git)
+.env
+.env.*
+!.env.example
+credentials.json
+*password*
+*.key
+*.pem
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Carpetas locales / legacy con datos personales y scripts antiguos
+unused/
+analisis_astro/
+generar_dashboard.py
+.github/instructions/
+
+# Datasets y archivos generados en disco
+web/data/loteria_data.json
+web/data/loteria_data.js
+dashboard_loteria.html
+tabla_analisis_numeros_*.html
+tabla_analisis_numeros_*.md
+*.xlsx
+*.xlsm
+*.pbix
+*.joblib
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
