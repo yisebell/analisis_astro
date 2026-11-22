@@ -146,3 +146,22 @@ def test_excel_download_in_memory(monkeypatch):
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert res.content[:2] == b"PK"  # Firma de archivo ZIP/XLSX válido
+
+
+def test_quant_serializes_numpy_scalars(monkeypatch):
+    import numpy as np
+    _mock_auth(monkeypatch, role="viewer", active=True)
+    monkeypatch.setattr(
+        main_mod,
+        "ejecutar_analisis_cuantitativo",
+        lambda loteria="luna", eval_window=300: {
+            "ok": np.bool_(True),
+            "total_sorteos": np.int64(300),
+            "score": np.float64(1.23),
+        },
+    )
+    res = client.get("/api/quant?loteria=luna&window=300", headers={"Authorization": "Bearer valid-token"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body == {"ok": True, "total_sorteos": 300, "score": 1.23}
+

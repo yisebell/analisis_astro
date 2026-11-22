@@ -247,11 +247,11 @@ def _detectar_cambio_regimen_cusum(digits_arr: np.ndarray, fechas: List[str]) ->
             best_cp_fecha = fechas_recent[peak_cp] if peak_cp < len(fechas_recent) else None
 
     return {
-        'detectado': best_cusum > 7.5 or max_chi2 > 21.67,
-        'score_cusum': round(best_cusum, 2),
+        'detectado': bool(best_cusum > 7.5 or max_chi2 > 21.67),
+        'score_cusum': round(float(best_cusum), 2),
         'digito_impulsor': int(best_digit),
         'fecha_cambio': best_cp_fecha if best_cusum > 7.5 else max_fecha,
-        'chi2_ventana_max': round(max_chi2, 2),
+        'chi2_ventana_max': round(float(max_chi2), 2),
         'sparkline': sparkline[-28:]
     }
 

@@ -6,13 +6,14 @@ Servidor de producción FastAPI para Astro Analytics Pro.
 - Sirve la SPA estática desde /web
 """
 import os
+import json
 import datetime
 from typing import List
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -54,9 +55,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS estricto
+# CORS estricto (normaliza barras finales para evitar fallos por URLs como https://app.onrender.com/)
 raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
-allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+allowed_origins = [o.strip().rstrip("/") for o in raw_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -131,6 +132,12 @@ def api_datos(
     return Response(content=raw_bytes, media_type="application/json; charset=utf-8")
 
 
+def _json_default(obj):
+    if hasattr(obj, "item"):
+        return obj.item()
+    return str(obj)
+
+
 @app.get("/api/quant")
 @limiter.limit("20/minute")
 def api_quant(
@@ -140,7 +147,8 @@ def api_quant(
     user: AuthenticatedUser = Depends(require_active_user),
 ):
     resultado = ejecutar_analisis_cuantitativo(loteria=loteria, eval_window=window)
-    return JSONResponse(content=resultado)
+    raw = json.dumps(resultado, default=_json_default, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return Response(content=raw, media_type="application/json; charset=utf-8")
 
 
 @app.get("/api/lista_usuario")
