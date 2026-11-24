@@ -63,6 +63,98 @@
   // Referencias DOM
   const dom = {};
 
+  // ============================================================================
+  // ICONOS VECTORIALES DE LOS 12 SIGNOS ZODIACALES
+  // ============================================================================
+  const ZODIAC_ICONS = {
+    aries: {
+      unicode: '♈',
+      el: 'fuego',
+      svg: '<path d="M12 20V9M12 9C12 5.5 9.5 4 7.5 4C5.3 4 4 5.7 4 7.5C4 8.8 4.7 9.8 5.6 10.3M12 9C12 5.5 14.5 4 16.5 4C18.7 4 20 5.7 20 7.5C20 8.8 19.3 9.8 18.4 10.3"/>'
+    },
+    tauro: {
+      unicode: '♉',
+      el: 'tierra',
+      svg: '<circle cx="12" cy="14.5" r="5.5"/><path d="M6 4.5C6.8 7.5 9.1 9 12 9C14.9 9 17.2 7.5 18 4.5"/>'
+    },
+    geminis: {
+      unicode: '♊',
+      el: 'aire',
+      svg: '<path d="M5 4.5C8.5 6.2 15.5 6.2 19 4.5M5 19.5C8.5 17.8 15.5 17.8 19 19.5M9 5.7V18.3M15 5.7V18.3"/>'
+    },
+    cancer: {
+      unicode: '♋',
+      el: 'agua',
+      svg: '<circle cx="7.5" cy="9" r="3"/><path d="M7.5 6C12 5 16.5 6.8 19.5 10.5"/><circle cx="16.5" cy="15" r="3"/><path d="M16.5 18C12 19 7.5 17.2 4.5 13.5"/>'
+    },
+    leo: {
+      unicode: '♌',
+      el: 'fuego',
+      svg: '<circle cx="7.5" cy="14.5" r="3"/><path d="M9.8 12.6C8.8 9 10.5 5 14 5C17 5 18.5 7.3 17.5 10.5L15.8 15.5C15.2 17.5 16.5 19.2 18.3 19C19.5 18.8 20.3 18 20.5 17"/>'
+    },
+    virgo: {
+      unicode: '♍',
+      el: 'tierra',
+      svg: '<path d="M4.5 6V16.5M4.5 9C5.5 6.8 8.5 6.8 9 9.5V16.5M9 9C10 6.8 13 6.8 13.5 9.5V16.5C13.5 18 14.7 19.2 16.5 19.5M13.5 11C15.5 8.5 18.5 9.5 18 12.5C17.5 15.5 14 17.8 11.5 19.5"/>'
+    },
+    libra: {
+      unicode: '♎',
+      el: 'aire',
+      svg: '<path d="M4 18.5H20M4 14.5H8.5C8 13.7 7.8 12.8 7.8 11.8C7.8 9.4 9.7 7.5 12 7.5C14.3 7.5 16.2 9.4 16.2 11.8C16.2 12.8 16 13.7 15.5 14.5H20"/>'
+    },
+    escorpion: {
+      unicode: '♏',
+      el: 'agua',
+      svg: '<path d="M4 6V16.5M4 9C5 6.8 8 6.8 8.5 9.5V16.5M8.5 9C9.5 6.8 12.5 6.8 13 9.5V15.5C13 17.8 14.8 19 16.8 18.2L20 15M17.2 14.6L20 15L19.6 17.8"/>'
+    },
+    sagitario: {
+      unicode: '♐',
+      el: 'fuego',
+      svg: '<path d="M5 19L19 5M12 5H19V12M7.5 11.5L12.5 16.5"/>'
+    },
+    capricornio: {
+      unicode: '♑',
+      el: 'tierra',
+      svg: '<path d="M4.5 6.5L8.5 16.5L12.5 7.5C13.5 5.5 16.5 6 16.5 9V14.5M16.5 14.5C16.5 12.6 19.8 12.6 19.8 15.2C19.8 17.6 17 19.2 14.5 18.5C12.8 18 12 16.5 13 15.2C14 14 16.5 14.5 16.5 14.5Z"/>'
+    },
+    acuario: {
+      unicode: '♒',
+      el: 'aire',
+      svg: '<path d="M4 9.5L7 6.5L10 9.5L13 6.5L16 9.5L19.5 6.5M4 16L7 13L10 16L13 13L16 16L19.5 13"/>'
+    },
+    piscis: {
+      unicode: '♓',
+      el: 'agua',
+      svg: '<path d="M6 4.5C9.5 8 9.5 16 6 19.5M18 4.5C14.5 8 14.5 16 18 19.5M5 12H19"/>'
+    }
+  };
+
+  function normalizarClaveSigno(signo) {
+    if (!signo) return '';
+    const key = String(signo).trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return key === 'escorpio' ? 'escorpion' : key;
+  }
+
+  function getSignoUnicode(signo) {
+    const meta = ZODIAC_ICONS[normalizarClaveSigno(signo)];
+    return meta ? meta.unicode : '✦';
+  }
+
+  function renderSignoIcon(signo, size = 15) {
+    const key = normalizarClaveSigno(signo);
+    const meta = ZODIAC_ICONS[key];
+    if (!meta) return '';
+    return `<svg class="zodiac-svg zodiac-el-${meta.el}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${meta.svg}</svg>`;
+  }
+
+  function renderSignoWithIcon(signo, size = 15) {
+    if (!signo) return '';
+    const icon = renderSignoIcon(signo, size);
+    return icon
+      ? `<span class="zodiac-inline">${icon}<span>${signo}</span></span>`
+      : String(signo);
+  }
+
   // Inicialización cuando el DOM esté listo
   document.addEventListener('DOMContentLoaded', init);
 
@@ -1161,7 +1253,7 @@
           <div class="ball">${ultimo.d[1]}</div>
           <div class="ball">${ultimo.d[2]}</div>
           <div class="ball">${ultimo.d[3]}</div>
-          <div class="sign-badge">✨ ${ultimo.s}</div>
+          <div class="sign-badge">${renderSignoWithIcon(ultimo.s, 18)}</div>
         </div>
         <div class="draw-calcs">
           ${state.loteria === 'combinados'
@@ -1221,7 +1313,7 @@
           <td><span class="col-mono">${s.f}</span></td>
           <td><span class="badge ${s.l === 'luna' ? 'badge-info' : 'badge-warning'}">${s.l.toUpperCase()}</span></td>
           <td><span class="number-pill">${s.n}</span></td>
-          <td><span class="sign-badge" style="padding:0.2rem 0.5rem;font-size:0.75rem;">${s.s}</span></td>
+          <td><span class="sign-badge" style="padding:0.2rem 0.5rem;font-size:0.75rem;">${renderSignoWithIcon(s.s, 14)}</span></td>
           <td class="col-mono">${s.d[0]} | ${s.d[1]} | ${s.d[2]} | ${s.d[3]}</td>
           <td class="col-mono">${s.c.join('-')}</td>
           <td class="col-mono">${s.dist.join('-')}</td>
@@ -1954,7 +2046,7 @@
     if (divSignos) {
       divSignos.innerHTML = res.signosRanking.map(s => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;font-size:0.8rem;">
-          <span style="font-weight:600;">✨ ${s.signo}</span>
+          <span style="font-weight:600;">${renderSignoWithIcon(s.signo, 15)}</span>
           <span class="col-mono">${s.count} veces (${s.pct.toFixed(1)}%)</span>
         </div>
       `).join('');
@@ -1970,7 +2062,7 @@
             ${c.anterior ? `
               <span class="col-mono" style="color:var(--text-dim);font-size:0.75rem;">${c.anterior.fecha}</span>
               <span class="number-pill">${c.anterior.numero}</span>
-              <span style="font-size:0.75rem;color:#f59e0b;">${c.anterior.signo}</span>
+              <span style="font-size:0.75rem;color:#f59e0b;">${renderSignoWithIcon(c.anterior.signo, 13)}</span>
               <span class="badge" style="font-size:0.7rem;background:rgba(99,102,241,0.15);color:var(--accent-cyan);" title="Distancia Base 10">DB10: ${c.anterior.db10}</span>
             ` : '<span style="color:var(--text-dim)">-</span>'}
           </td>
@@ -1978,7 +2070,7 @@
           <td style="background:rgba(99,102,241,0.08);border-left:1px solid rgba(99,102,241,0.3);border-right:1px solid rgba(99,102,241,0.3);">
             <span class="col-mono" style="font-weight:700;">${c.fecha}</span>
             <span class="number-pill" style="border-color:var(--accent-cyan);font-weight:800;">${c.numero}</span>
-            <span class="sign-badge" style="padding:0.15rem 0.45rem;font-size:0.72rem;display:inline-flex;">${c.signo}</span>
+            <span class="sign-badge" style="padding:0.15rem 0.45rem;font-size:0.72rem;display:inline-flex;">${renderSignoWithIcon(c.signo, 13)}</span>
             <span class="badge" style="font-size:0.72rem;background:rgba(16,185,129,0.2);color:#34d399;font-weight:700;" title="Distancia Base 10">DB10: ${c.db10}</span>
           </td>
           <!-- DESPUÉS -->
@@ -1986,7 +2078,7 @@
             ${c.posterior ? `
               <span class="col-mono" style="color:var(--text-dim);font-size:0.75rem;">${c.posterior.fecha}</span>
               <span class="number-pill">${c.posterior.numero}</span>
-              <span style="font-size:0.75rem;color:#f59e0b;">${c.posterior.signo}</span>
+              <span style="font-size:0.75rem;color:#f59e0b;">${renderSignoWithIcon(c.posterior.signo, 13)}</span>
               <span class="badge" style="font-size:0.7rem;background:rgba(99,102,241,0.15);color:var(--accent-cyan);" title="Distancia Base 10">DB10: ${c.posterior.db10}</span>
             ` : '<span class="badge badge-warning">AL DÍA (ÚLTIMO)</span>'}
           </td>
@@ -2016,7 +2108,7 @@
     if (divSignos) {
       divSignos.innerHTML = res.signosRanking.map(s => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0.35rem 0.5rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;font-size:0.78rem;">
-          <span style="font-weight:600;">✨ ${s.signo}</span>
+          <span style="font-weight:600;">${renderSignoWithIcon(s.signo, 15)}</span>
           <span class="col-mono">${s.count} (${s.pct.toFixed(1)}%)</span>
         </div>
       `).join('');
@@ -2062,7 +2154,7 @@
             ${c.anterior ? `
               <span class="col-mono" style="color:var(--text-dim);font-size:0.75rem;">${c.anterior.fecha}</span>
               <span class="number-pill">${c.anterior.numero}</span>
-              <span style="font-size:0.75rem;color:#f59e0b;">${c.anterior.signo}</span>
+              <span style="font-size:0.75rem;color:#f59e0b;">${renderSignoWithIcon(c.anterior.signo, 13)}</span>
               <span class="badge" style="font-size:0.7rem;background:rgba(99,102,241,0.15);color:var(--accent-cyan);" title="DB10 Sorteo Previo">DB10: ${c.anterior.db10}</span>
             ` : '<span style="color:var(--text-dim)">-</span>'}
           </td>
@@ -2070,7 +2162,7 @@
           <td style="background:rgba(16,185,129,0.07);border-left:1px solid rgba(16,185,129,0.3);border-right:1px solid rgba(16,185,129,0.3);">
             <span class="col-mono" style="font-weight:700;">${c.fecha}</span>
             <span class="number-pill" style="font-weight:700;">${c.numero}</span>
-            <span class="sign-badge" style="padding:0.15rem 0.45rem;font-size:0.72rem;display:inline-flex;">${c.signo}</span>
+            <span class="sign-badge" style="padding:0.15rem 0.45rem;font-size:0.72rem;display:inline-flex;">${renderSignoWithIcon(c.signo, 13)}</span>
             <span class="badge" style="font-size:0.75rem;background:rgba(16,185,129,0.25);color:#34d399;font-weight:800;border:1px solid rgba(16,185,129,0.4);" title="Patrón DB10 Evaluado">DB10: ${c.db10}</span>
           </td>
           <!-- DESPUÉS (Transición) -->
@@ -2078,7 +2170,7 @@
             ${c.posterior ? `
               <span class="col-mono" style="color:var(--text-dim);font-size:0.75rem;">${c.posterior.fecha}</span>
               <span class="number-pill" style="border-color:#34d399;">${c.posterior.numero}</span>
-              <span style="font-size:0.75rem;color:#f59e0b;">${c.posterior.signo}</span>
+              <span style="font-size:0.75rem;color:#f59e0b;">${renderSignoWithIcon(c.posterior.signo, 13)}</span>
               <span class="badge" style="font-size:0.75rem;background:rgba(99,102,241,0.2);color:var(--accent-cyan);font-weight:700;" title="DB10 Siguiente">DB10: ${c.posterior.db10}</span>
             ` : '<span class="badge badge-warning">AL DÍA (ÚLTIMO)</span>'}
           </td>
@@ -2606,7 +2698,7 @@
                 <div class="ball" style="width:36px;height:36px;font-size:1.15rem;box-shadow:0 0 10px rgba(6,182,212,0.5);">${digs[2]}</div>
                 <div class="ball" style="width:36px;height:36px;font-size:1.15rem;box-shadow:0 0 10px rgba(6,182,212,0.5);">${digs[3]}</div>
                 <span class="sign-badge" style="margin-left:auto;padding:0.25rem 0.6rem;font-size:0.8rem;">
-                  ✨ ${c.signo}
+                  ${renderSignoWithIcon(c.signo, 15)}
                 </span>
               </div>
 
@@ -2644,7 +2736,7 @@
             <td><span class="number-pill" style="font-size:1.1rem;font-weight:800;letter-spacing:0.1em;">${c.numero}</span></td>
             <td><span class="number-pill" style="border-color:var(--primary);">${c.parIni}</span> <span style="font-size:0.72rem;color:var(--text-dim);">(${c.atrasoIni}s)</span></td>
             <td><span class="number-pill" style="border-color:var(--accent-cyan);">${c.parFin}</span> <span style="font-size:0.72rem;color:var(--text-dim);">(${c.atrasoFin}s)</span></td>
-            <td><span class="sign-badge" style="padding:0.15rem 0.45rem;font-size:0.75rem;">✨ ${c.signo}</span></td>
+            <td><span class="sign-badge" style="padding:0.15rem 0.45rem;font-size:0.75rem;">${renderSignoWithIcon(c.signo, 14)}</span></td>
             <td class="col-mono" style="font-weight:800;color:var(--accent-emerald);font-size:1rem;">${c.scoreGlobal}</td>
             <td style="font-size:0.75rem;color:${c.esInedito ? 'var(--accent-emerald)' : 'var(--text-muted)'};">${c.historia4C}</td>
             <td style="font-size:0.74rem;max-width:320px;line-height:1.4;">${c.razon}</td>
@@ -2790,17 +2882,17 @@
     // KPIs
     if (kpiEsperada && signos[0]) kpiEsperada.textContent = signos[0].esperada;
     if (kpiDeficit && signos[0]) {
-      kpiDeficit.textContent = signos[0].signo;
+      kpiDeficit.innerHTML = renderSignoWithIcon(signos[0].signo, 22);
       if (kpiDeficitSub) kpiDeficitSub.textContent = `Déficit: ${signos[0].deficit} sorteos`;
     }
     const masAtrasado = signos.slice().sort((a, b) => b.atraso - a.atraso)[0];
     if (kpiAtraso && masAtrasado) {
-      kpiAtraso.textContent = masAtrasado.signo;
+      kpiAtraso.innerHTML = renderSignoWithIcon(masAtrasado.signo, 22);
       if (kpiAtrasoSub) kpiAtrasoSub.textContent = `${masAtrasado.atraso} sorteos sin salir`;
     }
     const masCaliente = signos.slice().sort((a, b) => b.frecuencia - a.frecuencia)[0];
     if (kpiCaliente && masCaliente) {
-      kpiCaliente.textContent = masCaliente.signo;
+      kpiCaliente.innerHTML = renderSignoWithIcon(masCaliente.signo, 22);
       if (kpiCalienteSub) kpiCalienteSub.textContent = `${masCaliente.frecuencia} salidas totales`;
     }
 
@@ -2815,7 +2907,7 @@
       return `
         <tr style="background:${scoreBg};">
           <td><span class="badge ${idx < 3 ? 'badge-warning' : idx < 6 ? 'badge-info' : 'badge-primary'}">#${idx + 1}</span></td>
-          <td><span class="sign-badge" style="font-size:0.95rem;padding:0.25rem 0.65rem;font-weight:700;">✨ ${s.signo}</span></td>
+          <td><span class="sign-badge" style="font-size:0.95rem;padding:0.25rem 0.65rem;font-weight:700;">${renderSignoWithIcon(s.signo, 17)}</span></td>
           <td class="col-mono" style="font-weight:700;color:var(--accent-emerald);font-size:1rem;">${s.scoreJEV}</td>
           <td class="col-mono">${s.frecuencia}</td>
           <td class="col-mono">${s.esperada}</td>
@@ -2875,9 +2967,10 @@
           const s = sorteos[i];
           const opt = document.createElement('option');
           opt.value = i.toString();
+          const signoTxt = s.s ? `${getSignoUnicode(s.s)} ${s.s}` : '';
           opt.textContent = (i === 0)
-            ? `🔴 En Vivo: ${s.f} (#${s.n} ${s.s || ''})`
-            : `T-${i}: ${s.f} (#${s.n} ${s.s || ''})`;
+            ? `🔴 En Vivo: ${s.f} (#${s.n} ${signoTxt})`
+            : `T-${i}: ${s.f} (#${s.n} ${signoTxt})`;
           select.appendChild(opt);
         }
         select.dataset.cacheKey = cacheKey;
@@ -2904,7 +2997,7 @@
         <div class="secuencial-chain-node ${item.esActual ? 'is-base' : ''}">
           <span class="secuencial-node-label">${item.esActual ? '★ Sorteo Base' : 'T-' + (dataSec.sorteosVisual.length - 1 - idx)}</span>
           <span class="secuencial-node-num">${item.numero}</span>
-          <span class="secuencial-node-sub">${item.fecha} (${item.signo || item.loteria})</span>
+          <span class="secuencial-node-sub">${item.fecha} (${item.signo ? renderSignoWithIcon(item.signo, 12) : item.loteria})</span>
         </div>
         ${idx < dataSec.sorteosVisual.length - 1 ? '<span class="secuencial-chain-arrow">➔</span>' : ''}
       `).join('');
@@ -2924,7 +3017,7 @@
               </div>
               <div style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin-top:0.2rem;">
                 Resultado Real Siguiente: <span style="font-family:var(--font-mono);color:#38bdf8;font-size:1.15rem;">${bt.numReal}</span>
-                <span style="font-size:0.85rem;color:var(--text-muted);font-weight:500;">(${bt.fechaReal} &bull; ${bt.signoReal || ''})</span>
+                <span style="font-size:0.85rem;color:var(--text-muted);font-weight:500;">(${bt.fechaReal}${bt.signoReal ? ' &bull; ' + renderSignoWithIcon(bt.signoReal, 14) : ''})</span>
               </div>
             </div>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
@@ -3053,7 +3146,7 @@
               </div>
               <div style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin-top:0.2rem;">
                 Resultado Real Siguiente: <span style="font-family:var(--font-mono);color:#38bdf8;font-size:1.15rem;">${btConv.numReal}</span>
-                <span style="font-size:0.85rem;color:var(--text-muted);font-weight:500;">(${btConv.fechaReal} &bull; ${btConv.signoReal || ''})</span>
+                <span style="font-size:0.85rem;color:var(--text-muted);font-weight:500;">(${btConv.fechaReal}${btConv.signoReal ? ' &bull; ' + renderSignoWithIcon(btConv.signoReal, 14) : ''})</span>
               </div>
             </div>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
@@ -3115,7 +3208,7 @@
             <div class="convergencia-header">
               <span class="convergencia-rank-badge">#${item.rank} ELECCIÓN DE ORO</span>
               <span class="sign-badge" style="font-size:0.75rem;padding:0.15rem 0.55rem;font-weight:700;">
-                ✨ ${item.signo}
+                ${renderSignoWithIcon(item.signo, 14)}
               </span>
             </div>
 
@@ -3365,10 +3458,10 @@
                   <tr>
                     <td>${m.fecha}</td>
                     <td class="col-mono">#${m.num}</td>
-                    <td>${m.signo}</td>
+                    <td>${renderSignoWithIcon(m.signo, 14)}</td>
                     <td>${m.fechaSig}</td>
                     <td class="col-mono" style="font-weight:800;font-size:1.05rem;color:#38bdf8;">#${m.numSig}</td>
-                    <td>${m.signoSig}</td>
+                    <td>${renderSignoWithIcon(m.signoSig, 14)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -3784,7 +3877,7 @@
         <div class="portfolio-ticket-card">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <span class="badge ${t.rank <= 3 ? 'badge-warning' : 'badge-primary'}">#${t.rank} ÓPTIMO</span>
-            <span class="sign-badge" style="padding:0.15rem 0.5rem;font-size:0.74rem;">✨ ${t.signo}</span>
+            <span class="sign-badge" style="padding:0.15rem 0.5rem;font-size:0.74rem;">${renderSignoWithIcon(t.signo, 14)}</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;">
             <span class="portfolio-ticket-num number-pill" style="background:transparent;border:none;padding:0;">${t.numero}</span>
@@ -4039,7 +4132,7 @@
       if (gen) {
         pre.textContent = gen.contenido;
         if (tagNum) tagNum.textContent = `Comodín: #${gen.numEspecial} (${gen.firstDigit}-${gen.d2}-${gen.d3}-${gen.lastDigit})`;
-        if (tagSigno) tagSigno.textContent = `Signo: ${gen.signoComun}`;
+        if (tagSigno) tagSigno.innerHTML = `Signo: ${renderSignoWithIcon(gen.signoComun, 13)}`;
       } else {
         pre.textContent = 'Generando pronósticos de apuestas...';
       }

@@ -683,10 +683,33 @@ header.top-header {
   border-radius: var(--radius-full);
   font-weight: 700;
   font-size: 0.95rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.45rem;
 }
+
+.zodiac-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  vertical-align: middle;
+}
+
+.zodiac-svg {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: -0.12em;
+}
+
+.zodiac-el-fuego { color: #fb923c; }
+.zodiac-el-tierra { color: #34d399; }
+.zodiac-el-aire { color: #38bdf8; }
+.zodiac-el-agua { color: #a78bfa; }
+
+[data-theme="light"] .zodiac-el-fuego { color: #ea580c; }
+[data-theme="light"] .zodiac-el-tierra { color: #059669; }
+[data-theme="light"] .zodiac-el-aire { color: #0284c7; }
+[data-theme="light"] .zodiac-el-agua { color: #7c3aed; }
 
 .draw-calcs {
   display: flex;
