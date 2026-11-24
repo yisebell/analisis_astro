@@ -231,6 +231,33 @@ app.mount("/css", StaticFiles(directory=os.path.join(WEB_DIR, "css")), name="css
 app.mount("/js", StaticFiles(directory=os.path.join(WEB_DIR, "js")), name="js")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def serve_favicon_ico():
+    return FileResponse(
+        os.path.join(WEB_DIR, "favicon.ico"),
+        media_type="image/x-icon",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def serve_favicon_svg():
+    return FileResponse(
+        os.path.join(WEB_DIR, "favicon.svg"),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+def serve_apple_touch_icon():
+    return FileResponse(
+        os.path.join(WEB_DIR, "apple-touch-icon.png"),
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 @app.get("/")
 def serve_index():
     return FileResponse(os.path.join(WEB_DIR, "index.html"))

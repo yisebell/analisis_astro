@@ -165,3 +165,19 @@ def test_quant_serializes_numpy_scalars(monkeypatch):
     body = res.json()
     assert body == {"ok": True, "total_sorteos": 300, "score": 1.23}
 
+
+def test_favicon_assets_served():
+    res_ico = client.get("/favicon.ico")
+    assert res_ico.status_code == 200
+    assert len(res_ico.content) > 100
+
+    res_svg = client.get("/favicon.svg")
+    assert res_svg.status_code == 200
+    assert "image/svg+xml" in res_svg.headers["content-type"]
+    assert b"<svg" in res_svg.content
+
+    res_png = client.get("/apple-touch-icon.png")
+    assert res_png.status_code == 200
+    assert res_png.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
