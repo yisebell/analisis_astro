@@ -3008,13 +3008,110 @@
     actualizarPreviewFichero();
 
     const gridConvergencia = document.getElementById('gridConvergenciaEntropica');
+    const panelBtConv = document.getElementById('panelBacktestConvergencia');
     const top8 = state.calculos.top8Convergencia || [];
+
+    const normSignoBt = (s) => String(s || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const btConvActivo = Boolean(dataSec.esBacktest && dataSec.backtestResult && top8.length > 0);
+    const btConv = btConvActivo ? dataSec.backtestResult : null;
+    const numRealConv = btConv ? String(btConv.numReal || '').padStart(4, '0') : '';
+    const signoRealConvNorm = btConv ? normSignoBt(btConv.signoReal) : '';
+
+    const evalsConv = btConvActivo
+      ? top8.map((item) => {
+          const numPred = String(item.numero || '').padStart(4, '0');
+          let digitosAcertados = 0;
+          for (let p = 0; p < 4; p++) {
+            if (numPred[p] === numRealConv[p]) digitosAcertados++;
+          }
+          return {
+            rank: item.rank,
+            numero: numPred,
+            acierto4C: numPred === numRealConv,
+            acierto3C: numPred.slice(1, 4) === numRealConv.slice(1, 4),
+            acierto2C: numPred.slice(2, 4) === numRealConv.slice(2, 4),
+            digitosAcertados,
+            aciertoSigno: Boolean(signoRealConvNorm && normSignoBt(item.signo) === signoRealConvNorm)
+          };
+        })
+      : [];
+
+    if (panelBtConv) {
+      if (btConvActivo) {
+        panelBtConv.style.display = 'block';
+        const hits4C = evalsConv.filter(e => e.acierto4C);
+        const hits3C = evalsConv.filter(e => e.acierto3C);
+        const hits2C = evalsConv.filter(e => e.acierto2C);
+        const hitsSigno = evalsConv.filter(e => e.aciertoSigno);
+        const mejorItem = evalsConv.reduce((best, cur) => (cur.digitosAcertados > best.digitosAcertados ? cur : best), evalsConv[0]);
+
+        panelBtConv.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+            <div>
+              <div style="font-size:0.75rem;font-weight:700;color:var(--primary);text-transform:uppercase;">
+                🎯 Verificación de Predicción vs Realidad (Backtest — Top 8 de Oro)
+              </div>
+              <div style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin-top:0.2rem;">
+                Resultado Real Siguiente: <span style="font-family:var(--font-mono);color:#38bdf8;font-size:1.15rem;">${btConv.numReal}</span>
+                <span style="font-size:0.85rem;color:var(--text-muted);font-weight:500;">(${btConv.fechaReal} &bull; ${btConv.signoReal || ''})</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <span class="badge ${hits4C.length ? 'badge-success' : 'badge-danger'}">
+                4 Cifras: ${hits4C.length ? `¡PLENO ACERTADO! (#${hits4C.map(h => h.rank).join(', #')})` : 'Sin acierto pleno'}
+              </span>
+              <span class="badge ${hits3C.length ? 'badge-success' : 'badge-info'}">
+                3C Fin: ${hits3C.length ? `¡ACERTADO! (#${hits3C.map(h => h.rank).join(', #')})` : 'No'}
+              </span>
+              <span class="badge ${hits2C.length ? 'badge-success' : 'badge-info'}">
+                2C Fin: ${hits2C.length ? `¡ACERTADO! (#${hits2C.map(h => h.rank).join(', #')})` : 'No'}
+              </span>
+              <span class="badge ${mejorItem.digitosAcertados >= 2 ? 'badge-success' : 'badge-warning'}">
+                Mejor: ${mejorItem.digitosAcertados} de 4 dígitos (#${mejorItem.rank})
+              </span>
+              ${signoRealConvNorm ? `
+                <span class="badge ${hitsSigno.length ? 'badge-success' : 'badge-info'}">
+                  Signo: ${hitsSigno.length ? `¡ACERTADO! (${hitsSigno.length}/8)` : 'No'}
+                </span>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      } else {
+        panelBtConv.style.display = 'none';
+      }
+    }
+
     if (gridConvergencia) {
       if (!top8.length) {
         gridConvergencia.innerHTML = `<p style="color:var(--text-muted);font-size:0.85rem;">Calculando los 8 números de oro...</p>`;
       } else {
-        gridConvergencia.innerHTML = top8.map((item, idx) => `
-          <div class="convergencia-card ${idx === 0 ? 'is-top1' : ''}">
+        gridConvergencia.innerHTML = top8.map((item, idx) => {
+          const ev = btConvActivo ? evalsConv[idx] : null;
+          const esAciertoClave = Boolean(ev && (ev.acierto4C || ev.acierto3C || ev.acierto2C));
+          const numeroHtml = ev
+            ? ev.numero.split('').map((ch, p) => (
+                ch === numRealConv[p]
+                  ? `<span class="convergencia-digit-hit" title="Dígito acertado en posición D${p + 1}">${ch}</span>`
+                  : ch
+              )).join('')
+            : item.numero;
+
+          const btStripHtml = ev ? `
+            <div class="convergencia-bt-strip ${esAciertoClave ? 'is-hit' : ''}">
+              <span>Real: <strong>${btConv.numReal}</strong></span>
+              <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;">
+                ${ev.acierto4C ? '<span class="badge badge-success" style="font-size:0.68rem;padding:0.12rem 0.45rem;">¡PLENO 4C!</span>' : ''}
+                ${!ev.acierto4C && ev.acierto3C ? '<span class="badge badge-success" style="font-size:0.68rem;padding:0.12rem 0.45rem;">3C Fin ✓</span>' : ''}
+                ${!ev.acierto4C && !ev.acierto3C && ev.acierto2C ? '<span class="badge badge-success" style="font-size:0.68rem;padding:0.12rem 0.45rem;">2C Fin ✓</span>' : ''}
+                <span class="badge ${ev.digitosAcertados >= 2 ? 'badge-success' : 'badge-warning'}" style="font-size:0.68rem;padding:0.12rem 0.45rem;">${ev.digitosAcertados}/4 díg.</span>
+                ${ev.aciertoSigno ? '<span class="badge badge-success" style="font-size:0.68rem;padding:0.12rem 0.45rem;">Signo ✓</span>' : ''}
+              </div>
+            </div>
+          ` : '';
+
+          return `
+          <div class="convergencia-card ${idx === 0 ? 'is-top1' : ''} ${esAciertoClave ? 'is-bt-hit' : ''}">
             <div class="convergencia-header">
               <span class="convergencia-rank-badge">#${item.rank} ELECCIÓN DE ORO</span>
               <span class="sign-badge" style="font-size:0.75rem;padding:0.15rem 0.55rem;font-weight:700;">
@@ -3023,9 +3120,11 @@
             </div>
 
             <div class="convergencia-number-row">
-              <div class="convergencia-number">${item.numero}</div>
+              <div class="convergencia-number">${numeroHtml}</div>
               <div class="convergencia-score-tag" title="Score de Convergencia Multidimensional">${item.score}%</div>
             </div>
+
+            ${btStripHtml}
 
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.72rem;color:var(--text-muted);">
               <span>${item.nivel}</span>
@@ -3051,7 +3150,8 @@
               ${item.fundamentacion}
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
     }
 

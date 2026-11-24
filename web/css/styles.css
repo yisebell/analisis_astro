@@ -1874,6 +1874,46 @@ th.sortable-th.active-sort .sort-icon {
   border-color: #e2e8f0;
 }
 
+.convergencia-card.is-bt-hit {
+  border-color: rgba(16, 185, 129, 0.65);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.16);
+}
+
+.convergencia-digit-hit {
+  color: #10b981;
+  -webkit-text-fill-color: #10b981;
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+  border-bottom: 2px solid #10b981;
+}
+
+.convergencia-bt-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.55rem;
+}
+
+.convergencia-bt-strip.is-hit {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.convergencia-bt-strip strong {
+  color: #38bdf8;
+}
+
+[data-theme="light"] .convergencia-bt-strip strong {
+  color: #0284c7;
+}
+
 /* Barra de Exportación de Fichero Playwright */
 .export-file-toolbar {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
