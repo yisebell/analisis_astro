@@ -51,6 +51,11 @@
       targetIdx: 0,
       chartMode: 'both' // 'both', 'saltos', 'acumulada'
     },
+    adaptativo: {
+      targetIdx: 0,
+      horizonte: 7,
+      pesosPos: 0
+    },
     quant: {
       evalWindow: 300,
       portfolioMode: 'diversificada', // 'diversificada' | 'max_prob'
@@ -274,6 +279,10 @@
     // Si la pestaña activa es Polinómico, redibujar los gráficos SVG con la nueva paleta
     if (state.tab === 'polinomico' && state.calculos && state.calculos.polinomico) {
       renderPolinomico();
+    }
+    // Si la pestaña activa es Adaptativo, redibujar los gráficos SVG con la nueva paleta
+    if (state.tab === 'adaptativo' && state.calculos && state.calculos.adaptativo) {
+      renderAdaptativo();
     }
     // Si la pestaña activa es Lab Cuantitativo, redibujar los gráficos SVG con la nueva paleta
     if (state.tab === 'quant' && state.quant && state.quant.data) {
@@ -893,6 +902,48 @@
         mostrarToast('Regresando al sorteo actual en vivo (Polinómico)', 'info');
       });
     }
+
+    // Predictor Adaptativo & Módulo Semanal / Rango de Días
+    const btnsAdpH = document.querySelectorAll('[data-adp-h]');
+    btnsAdpH.forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.adaptativo.horizonte = parseInt(btn.getAttribute('data-adp-h'), 10) || 7;
+        btnsAdpH.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        delete state.calculos.adaptativo;
+        renderTabActual();
+      });
+    });
+
+    const btnsAdpPos = document.querySelectorAll('[data-adp-pos]');
+    btnsAdpPos.forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.adaptativo.pesosPos = parseInt(btn.getAttribute('data-adp-pos'), 10) || 0;
+        btnsAdpPos.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderAdaptativo();
+      });
+    });
+
+    const selectSorteoAdaptativo = document.getElementById('selectSorteoAdaptativo');
+    if (selectSorteoAdaptativo) {
+      selectSorteoAdaptativo.addEventListener('change', (e) => {
+        state.adaptativo.targetIdx = parseInt(e.target.value, 10) || 0;
+        delete state.calculos.adaptativo;
+        renderTabActual();
+      });
+    }
+
+    const btnResetSorteoAdaptativo = document.getElementById('btnResetSorteoAdaptativo');
+    if (btnResetSorteoAdaptativo) {
+      btnResetSorteoAdaptativo.addEventListener('click', () => {
+        state.adaptativo.targetIdx = 0;
+        if (selectSorteoAdaptativo) selectSorteoAdaptativo.value = '0';
+        delete state.calculos.adaptativo;
+        renderTabActual();
+        mostrarToast('Regresando al sorteo actual en vivo (Adaptativo)', 'info');
+      });
+    }
   }
 
   // ============================================================================
@@ -1100,7 +1151,8 @@
       evaluador: ['Radiografía de Apuestas', 'Evaluador rápido de listas de números con score estadístico (tabla_analisis_numeros.py)'],
       pronosticos: ['Pronósticos & Proyecciones', 'Modelado algorítmico combinando calor reciente, distancias y atrasos óptimos'],
       secuencial: ['Predictor Secuencial', 'Análisis de patrones hacia atrás (N-gramas) y predicción según repeticiones históricas'],
-      polinomico: ['Predictor Polinómico (4 Fórmulas)', 'Modelado de dígitos en aumento modular (Base 10) con regresiones polinómicas, armónicas y gráficos'],
+      polinomico: ['Predictor Polinómico + Híbrido Secuencial', 'Modelado de dígitos en aumento modular (Base 10) con 4 fórmulas polinómicas + F5 Híbrida Secuencial'],
+      adaptativo: ['Predictor Adaptativo & Módulo Semanal', 'Ensamble bayesiano día a día (10 expertos + contexto Sol↔Luna) y proyecciones por rango de días'],
       quant: ['Laboratorio Cuantitativo & ML', 'Auditoría forense (χ², FDR, CUSUM), Arena Walk-Forward de 6 modelos y Cartera Óptima 2C/3C']
     };
 
@@ -1208,6 +1260,19 @@
         );
       }
     }
+    if (tabId === 'adaptativo' && !state.calculos.adaptativo) {
+      if (window.AstroAdaptive && typeof window.AstroAdaptive.compute === 'function') {
+        const otra = state.data
+          ? (state.loteria === 'luna' ? state.data.sol : (state.loteria === 'sol' ? state.data.luna : null))
+          : null;
+        state.calculos.adaptativo = window.AstroAdaptive.compute(sorteos, {
+          targetIdx: state.adaptativo.targetIdx,
+          loteria: state.loteria,
+          otra: otra,
+          horizonte: state.adaptativo.horizonte
+        });
+      }
+    }
   }
 
   function renderTabActual() {
@@ -1225,6 +1290,7 @@
       case 'pronosticos': renderPronosticos(); break;
       case 'secuencial': renderSecuencial(); break;
       case 'polinomico': renderPolinomico(); break;
+      case 'adaptativo': renderAdaptativo(); break;
       case 'quant': cargarYRenderizarQuant(false); break;
     }
   }
@@ -3616,7 +3682,9 @@
 
             <div class="poly-pred-metrics">
               <span class="convergencia-pill">Saltos: <strong>+${pred.saltos.join(', +')}</strong></span>
-              <span class="convergencia-pill">R² medio: <strong>${r2Pct}%</strong></span>
+              ${pred.id === 'f5' && pred.extra
+                ? `<span class="convergencia-pill">Prob. post.: <strong>${pred.extra.probMedia}%</strong></span>`
+                : `<span class="convergencia-pill">R² medio: <strong>${r2Pct}%</strong></span>`}
               ${bt && poly.backtest.totalEval > 0
                 ? `<span class="convergencia-pill highlight">Exacto: <strong>${bt.pctExacto.toFixed(1)}%</strong> | ±1: <strong>${bt.pctCercano.toFixed(1)}%</strong></span>`
                 : ''}
@@ -3651,13 +3719,15 @@
           chartsHtml += PolyMod.renderChartAcumuladoSVG(posData);
         }
 
-        // Filas de las 4 fórmulas calculadas para este dígito
+        // Filas de las fórmulas calculadas para este dígito (F1..F5)
         const rowsHtml = posData.formulas.map((f, fIdx) => {
           const meta = poly.formulaMeta[fIdx];
-          const r2Str = `${Math.round(f.r2 * 100)}%`;
+          const r2Str = meta.serie === 'hibrida' ? `${f.probPct}%` : `${Math.round(f.r2 * 100)}%`;
           const valDesc = meta.serie === 'acumulada'
             ? `S=${PolyMod.fmtNum(f.valorPredicho, 1)}`
-            : `Δ=${PolyMod.fmtNum(f.valorPredicho, 2)}`;
+            : meta.serie === 'hibrida'
+              ? `+${f.saltoImplicito}`
+              : `Δ=${PolyMod.fmtNum(f.valorPredicho, 2)}`;
           return `
             <tr>
               <td>
@@ -3684,7 +3754,7 @@
                 </span>
               </div>
               <span class="badge badge-warning" style="font-size:0.74rem;">
-                Consenso: ${posData.consenso.digit} (${posData.consenso.count}/4)
+                Consenso: ${posData.consenso.digit} (${posData.consenso.count}/${posData.formulas.length})
               </span>
             </div>
 
@@ -3754,6 +3824,378 @@
           `;
         }).join('');
       }
+    }
+  }
+
+  // ============================================================================
+  // 10B2. PREDICTOR ADAPTATIVO & MÓDULO SEMANAL / RANGO DE DÍAS
+  // ============================================================================
+  function renderAdaptativo() {
+    const sorteos = obtenerSorteosFiltrados();
+    const adp = state.calculos.adaptativo;
+    const AdpMod = window.AstroAdaptive;
+    if (!AdpMod || !sorteos.length) return;
+
+    const heroGrid = document.getElementById('adpHeroGrid');
+    if (!adp) {
+      if (heroGrid) {
+        heroGrid.innerHTML = '<div class="card-panel" style="grid-column:1/-1;text-align:center;color:var(--text-muted);">Se necesitan al menos 60 sorteos en la ventana seleccionada (cambia el filtro temporal a 100, 1000 o Todo el Histórico).</div>';
+      }
+      return;
+    }
+
+    // 1. Selector de sorteo base / simulación (últimos 50)
+    const selectEl = document.getElementById('selectSorteoAdaptativo');
+    if (selectEl) {
+      const maxOpts = Math.min(50, Math.max(1, sorteos.length - 60));
+      const desiredKey = `adp-${state.loteria}-${state.timeWindow}-${maxOpts}`;
+      if (selectEl.dataset.cacheKey !== desiredKey) {
+        let html = '';
+        for (let i = 0; i < maxOpts; i++) {
+          const s = sorteos[i];
+          const label = i === 0
+            ? `🔴 EN VIVO: #${s.n} (${formatearFechaHumana(s.f)})`
+            : `Simular desde #${s.n} (${formatearFechaHumana(s.f)})`;
+          html += `<option value="${i}">${label}</option>`;
+        }
+        selectEl.innerHTML = html;
+        selectEl.dataset.cacheKey = desiredKey;
+      }
+      selectEl.value = String(adp.targetIdx);
+    }
+
+    // 2. Badges de contexto del día y modo
+    const ctxBadges = document.getElementById('adpContextoBadges');
+    if (ctxBadges) {
+      const modoHtml = adp.targetIdx === 0
+        ? '<span class="badge badge-info" style="font-size:0.74rem;">Modo: En Vivo</span>'
+        : `<span class="badge badge-warning" style="font-size:0.74rem;">Simulación · Base #${adp.ultimo.n}</span>`;
+      const ctxHtml = adp.contextoDia
+        ? `<span class="badge badge-primary" style="font-size:0.74rem;">Ref. Día (${adp.contextoDia.loteria}): #${adp.contextoDia.numero} ${adp.contextoDia.signo}</span>`
+        : '<span class="badge" style="font-size:0.74rem;">Ref. Día: Histórico propio</span>';
+      const msHtml = `<span class="badge" style="font-size:0.72rem;opacity:0.85;">${adp.cfg.nHistorico} sorteos · ${adp.ms} ms</span>`;
+      ctxBadges.innerHTML = modoHtml + ctxHtml + msHtml;
+    }
+
+    // 3. Panel de validación en simulación histórica
+    const panelBt = document.getElementById('panelBacktestAdaptativo');
+    if (panelBt) {
+      if (adp.backtest) {
+        panelBt.style.display = 'block';
+        const bt = adp.backtest;
+        const digHtml = bt.real.n.split('').map((ch, idx) => {
+          const st = bt.aciertos[idx]
+            ? 'color:#10b981;font-weight:900;text-decoration:underline;'
+            : bt.enTop3[idx]
+              ? 'color:#f59e0b;font-weight:700;'
+              : 'opacity:0.65;';
+          return `<span style="${st}">${ch}</span>`;
+        }).join('');
+
+        const histChips = bt.horizonteReal.map(s => {
+          const hit2 = bt.hits2CEnRango.some(x => x.f === s.f && x.n === s.n);
+          const hit3 = bt.hits3CEnRango.some(x => x.f === s.f && x.n === s.n);
+          const bg = hit3
+            ? 'border-color:#10b981;background:rgba(16,185,129,0.18);'
+            : hit2
+              ? 'border-color:#38bdf8;background:rgba(56,189,248,0.14);'
+              : '';
+          return `<span class="adp-pick-chip" style="${bg}">
+            <strong>${s.n}</strong>
+            <span class="chip-meta">${formatearFechaHumana(s.f)}${hit3 ? ' ★3C' : (hit2 ? ' ✓2C' : '')}</span>
+          </span>`;
+        }).join('');
+
+        panelBt.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.85rem;">
+            <div>
+              <span class="badge badge-primary" style="font-size:0.72rem;margin-bottom:0.3rem;">Validación Real Sin Fuga</span>
+              <div style="font-size:0.86rem;">
+                Siguiente sorteo real (${formatearFechaHumana(bt.real.f)}):
+                <strong style="font-family:var(--font-mono);font-size:1.15rem;letter-spacing:0.12em;margin:0 0.35rem;">#${digHtml}</strong>
+                <span style="color:var(--text-muted);">(${bt.real.s || ''})</span>
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;">
+                Exactos: <strong>${bt.totalAciertos}/4</strong> &bull;
+                En Top-3 dígito: <strong>${bt.enTop3.filter(Boolean).length}/4</strong> &bull;
+                Top-12 2C: <strong>${bt.en2C ? 'SÍ ✓' : 'No'}</strong> &bull;
+                En rango ${adp.horizon.H}d: <strong>${bt.hits2CEnRango.length} aciertos 2C</strong> / <strong>${bt.hits3CEnRango.length} aciertos 3C</strong>
+              </div>
+            </div>
+            <div style="flex:1;min-width:260px;">
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.3rem;">Sorteos reales ocurridos en los siguientes ${adp.horizon.H} sorteos:</div>
+              <div class="adp-pills-wrap">${histChips || '<span style="font-size:0.76rem;color:var(--text-muted);">Sin sorteos futuros suficientes</span>'}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        panelBt.style.display = 'none';
+      }
+    }
+
+    // 4. Tarjeta Hero + Top 4C / 3C / 2C para próximo sorteo
+    if (heroGrid) {
+      const topSigno = adp.signo && adp.signo.ranking.length ? adp.signo.ranking[0] : null;
+      const top3Signos = adp.signo ? adp.signo.ranking.slice(0, 3) : [];
+      const zSign = adp.validacion.z >= 0 ? '+' : '';
+      const diff2C = adp.horizonBT.pct2C - adp.horizonBT.base2C;
+
+      const top4Html = adp.top4C.slice(0, 8).map(item => `
+        <span class="adp-pick-chip">
+          <span class="number-pill" data-num="${item.numero}" title="Analizar ${item.numero}">${item.numero}</span>
+          <span class="chip-meta">${item.lift.toFixed(2)}×${item.signoSugerido ? ' · ' + item.signoSugerido.slice(0, 3) : ''}</span>
+        </span>
+      `).join('');
+
+      const top3Html = adp.top3C.slice(0, 8).map(item => `
+        <span class="adp-pick-chip">
+          <strong style="color:var(--accent-purple);">${item.trio}</strong>
+          <span class="chip-meta">${(item.prob * 100).toFixed(2)}%</span>
+        </span>
+      `).join('');
+
+      const top2Html = adp.top2C.slice(0, 10).map(item => `
+        <span class="adp-pick-chip">
+          <strong style="color:var(--accent-emerald);">${item.par}</strong>
+          <span class="chip-meta">${(item.prob * 100).toFixed(2)}%</span>
+        </span>
+      `).join('');
+
+      heroGrid.innerHTML = `
+        <div class="adp-star-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+            <span class="badge badge-info" style="font-size:0.72rem;">Próximo Sorteo · ${formatearFechaHumana(adp.fechaProx)}</span>
+            <span class="badge badge-warning" style="font-size:0.72rem;">Ensamble 10 Expertos</span>
+          </div>
+
+          <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+            <span class="adp-star-number number-pill" data-num="${adp.numeroEstrella}" style="background:none;border:none;padding:0;cursor:pointer;" title="Analizar #${adp.numeroEstrella}">${adp.numeroEstrella}</span>
+            ${topSigno ? `<div style="font-size:0.95rem;font-weight:700;">${renderSignoWithIcon(topSigno.signo, 18)} <span style="font-size:0.76rem;color:var(--text-muted);">(${topSigno.pct}%)</span></div>` : ''}
+          </div>
+
+          ${top3Signos.length ? `
+            <div style="font-size:0.76rem;color:var(--text-muted);">
+              Signos top: ${top3Signos.map(s => `<strong>${s.signo}</strong> (${s.pct}%)`).join(' · ')}
+            </div>
+          ` : ''}
+
+          <div class="poly-pred-metrics" style="border-top-color:rgba(56,189,248,0.25);">
+            <span class="convergencia-pill highlight">Exacto (${adp.validacion.evalN}d): <strong>${adp.validacion.pctEns.toFixed(2)}%</strong> (z=${zSign}${adp.validacion.z.toFixed(2)})</span>
+            <span class="convergencia-pill">Top-3 díg.: <strong>${adp.validacion.pctTop3Ens.toFixed(1)}%</strong></span>
+            <span class="convergencia-pill">Rango ${adp.horizon.H}d 2C: <strong>${adp.horizonBT.pct2C.toFixed(1)}%</strong> (${diff2C >= 0 ? '+' : ''}${diff2C.toFixed(1)} pts vs azar)</span>
+          </div>
+        </div>
+
+        <div class="adp-subcards-panel">
+          <div>
+            <div style="font-size:0.74rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">
+              Top 8 Combinaciones 4 Cifras (Probabilidad Conjunta · clic para analizar)
+            </div>
+            <div class="adp-pills-wrap">${top4Html}</div>
+          </div>
+          <div>
+            <div style="font-size:0.74rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">
+              Top 8 Terminales 3 Cifras (D2–D4)
+            </div>
+            <div class="adp-pills-wrap">${top3Html}</div>
+          </div>
+          <div>
+            <div style="font-size:0.74rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">
+              Top 10 Terminales 2 Cifras (Posicional + Secuencial 2C)
+            </div>
+            <div class="adp-pills-wrap">${top2Html}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 5. Distribuciones SVG por posición
+    const evalBadge = document.getElementById('adpEvalBadge');
+    if (evalBadge) {
+      evalBadge.textContent = `Walk-Forward: ${adp.validacion.evalN} sorteos (${adp.validacion.totalD} dígitos)`;
+    }
+    const distGrid = document.getElementById('adpDistGrid');
+    if (distGrid) {
+      distGrid.innerHTML = adp.posiciones.map(pos => {
+        const top3 = pos.ranking.slice(0, 3).map(r => `<strong>${r.digit}</strong> (${r.pct}%)`).join(' · ');
+        return `
+          <div style="display:flex;flex-direction:column;gap:0.45rem;">
+            ${AdpMod.renderDistribucionSVG(pos)}
+            <div style="font-size:0.74rem;color:var(--text-muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.25rem;">
+              <span>Top-3: ${top3}</span>
+              <span style="font-family:var(--font-mono);">BT: ${pos.ensAcierto.toFixed(1)}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 6. Módulo Semanal / Rango de Días
+    const hData = adp.horizon;
+    const hTit = document.getElementById('adpHorizonteTitulo');
+    if (hTit) {
+      hTit.textContent = hData.H === 7
+        ? 'Proyección Semanal (Próximos 7 Sorteos)'
+        : `Proyección de Rango: Próximos ${hData.H} Sorteos`;
+    }
+    const hBadge = document.getElementById('adpHorizonteRangoBadge');
+    if (hBadge) {
+      hBadge.textContent = `${formatearFechaHumana(hData.fechaInicio)} ➔ ${formatearFechaHumana(hData.fechaFin)}`;
+    }
+
+    const hTopGrid = document.getElementById('adpHorizonteTopGrid');
+    if (hTopGrid) {
+      const box4C = hData.top4C.map(x => `
+        <span class="adp-pick-chip">
+          <span class="number-pill" data-num="${x.numero}">${x.numero}</span>
+          <span class="chip-meta">${(x.prob * 100).toFixed(2)}% (${x.lift.toFixed(2)}×)</span>
+        </span>
+      `).join('');
+
+      const box2C = hData.top2C.slice(0, 12).map(x => `
+        <span class="adp-pick-chip">
+          <strong style="color:var(--accent-emerald);">${x.par}</strong>
+          <span class="chip-meta">${(x.prob * 100).toFixed(1)}% · ${x.lift.toFixed(2)}×</span>
+        </span>
+      `).join('');
+
+      const box3C = hData.top3C.slice(0, 12).map(x => `
+        <span class="adp-pick-chip">
+          <strong style="color:var(--accent-purple);">${x.trio}</strong>
+          <span class="chip-meta">${(x.prob * 100).toFixed(2)}% · ${x.lift.toFixed(2)}×</span>
+        </span>
+      `).join('');
+
+      hTopGrid.innerHTML = `
+        <div class="adp-horizon-box">
+          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--accent-cyan);">
+            Top 8 Números 4C para los ${hData.H} sorteos
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">Probabilidad acumulada de salir al menos una vez (base azar: ${(hData.base4C * 100).toFixed(3)}%)</div>
+          <div class="adp-pills-wrap">${box4C}</div>
+        </div>
+        <div class="adp-horizon-box">
+          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--accent-emerald);">
+            Top 12 Terminales 2C del Rango (${hData.H} sorteos)
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">Base azar individual: ${(hData.base2C * 100).toFixed(1)}% en ${hData.H} sorteos</div>
+          <div class="adp-pills-wrap">${box2C}</div>
+        </div>
+        <div class="adp-horizon-box">
+          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;color:var(--accent-purple);">
+            Top 12 Terminales 3C del Rango (${hData.H} sorteos)
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">Base azar individual: ${(hData.base3C * 100).toFixed(2)}% en ${hData.H} sorteos</div>
+          <div class="adp-pills-wrap">${box3C}</div>
+        </div>
+      `;
+    }
+
+    // Tabla cronograma día por día
+    const tbodyDias = document.getElementById('tbodyAdpDias');
+    if (tbodyDias) {
+      tbodyDias.innerHTML = hData.dias.map(d => {
+        const topDigStr = d.topDig.map((arr, p) =>
+          `<span style="margin-right:0.45rem;"><strong style="color:var(--text-muted);font-size:0.7rem;">D${p + 1}:</strong> ${arr.map(x => x.digit).join(',')}</span>`
+        ).join('');
+        return `
+          <tr>
+            <td><span class="badge ${d.h === 1 ? 'badge-warning' : ''}" style="font-size:0.72rem;">Día +${d.h} (${d.dia})</span></td>
+            <td class="col-mono" style="white-space:nowrap;">${formatearFechaHumana(d.fecha)}</td>
+            <td><span class="number-pill" data-num="${d.numero}">${d.numero}</span></td>
+            <td>${d.signo ? renderSignoWithIcon(d.signo, 14) : '-'}</td>
+            <td class="col-mono" style="font-size:0.76rem;">${topDigStr}</td>
+            <td class="col-mono"><strong style="color:var(--accent-emerald);">${d.top2C.par}</strong> <span style="color:var(--text-muted);font-size:0.72rem;">(${(d.top2C.prob * 100).toFixed(2)}%)</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Gráfico multi-horizonte y tablas de precisión / cobertura
+    const hChart = document.getElementById('adpHorizonteChart');
+    if (hChart) {
+      hChart.innerHTML = AdpMod.renderHorizonteSVG(adp.resumenHorizontes);
+    }
+
+    const tbodyH = document.getElementById('tbodyAdpHorizontes');
+    if (tbodyH) {
+      tbodyH.innerHTML = adp.resumenHorizontes.map(r => {
+        const esActual = r.H === hData.H;
+        const diff = r.pct2C - r.base2C;
+        const diffColor = diff >= 0 ? '#10b981' : '#f59e0b';
+        return `
+          <tr style="${esActual ? 'background:rgba(56,189,248,0.1);font-weight:700;' : ''}">
+            <td class="col-mono">${r.H} ${r.H === 1 ? 'día' : 'días'}${esActual ? ' ★' : ''}</td>
+            <td class="col-mono" style="font-weight:800;color:${diffColor};">${r.pct2C.toFixed(1)}%</td>
+            <td class="col-mono" style="color:var(--text-muted);">${r.base2C.toFixed(1)}%</td>
+            <td class="col-mono" style="color:${diffColor};">${diff >= 0 ? '+' : ''}${diff.toFixed(1)} pts</td>
+            <td class="col-mono">${r.pctDig.toFixed(1)}% <span style="color:var(--text-muted);font-size:0.7rem;">(azar ${r.baseDig.toFixed(1)}%)</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    const tbodyCob = document.getElementById('tbodyAdpCobertura');
+    if (tbodyCob) {
+      tbodyCob.innerHTML = hData.cobertura.map(c => `
+        <tr>
+          <td class="col-mono"><strong>Top ${c.k} terminales 2C</strong></td>
+          <td class="col-mono" style="font-weight:800;color:var(--accent-emerald);">${(c.probModelo * 100).toFixed(1)}%</td>
+          <td class="col-mono" style="color:var(--text-muted);">${(c.probAzar * 100).toFixed(1)}%</td>
+          <td class="col-mono" style="color:${c.ventaja >= 0 ? '#10b981' : '#f59e0b'};">${c.ventaja >= 0 ? '+' : ''}${c.ventaja.toFixed(1)} pts</td>
+        </tr>
+      `).join('');
+    }
+
+    const digAcumBox = document.getElementById('adpDigAcumBox');
+    if (digAcumBox) {
+      digAcumBox.innerHTML = `
+        <div style="font-size:0.74rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">
+          Dígitos más probables en los próximos ${hData.H} sorteos (base azar ${(hData.baseDig * 100).toFixed(1)}%)
+        </div>
+        <div class="adp-dig-acum-grid">
+          ${hData.digAcum.map((arr, p) => `
+            <div class="adp-dig-acum-item">
+              <div style="font-weight:800;color:var(--accent-cyan);margin-bottom:0.2rem;">Posición D${p + 1}</div>
+              <div class="col-mono">${arr.slice(0, 4).map(x => `<strong>${x.digit}</strong>(${(x.prob * 100).toFixed(0)}%)`).join(' · ')}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // 7. Arena de los 10 expertos + gráfico de evolución de pesos
+    const tbodyExp = document.getElementById('tbodyAdpExpertos');
+    if (tbodyExp) {
+      tbodyExp.innerHTML = adp.rankingExpertos.map((e, rank) => {
+        const wPct = (e.peso * 100).toFixed(1);
+        const barW = Math.min(100, e.peso * 260);
+        const picks = adp.posiciones.map(pos => {
+          const found = pos.expertos.find(x => x.id === e.id);
+          return found ? found.top : '-';
+        }).join(' / ');
+        return `
+          <tr style="${rank === 0 ? 'background:rgba(245,158,11,0.07);' : ''}">
+            <td>
+              <span class="poly-pred-code" style="background:${e.color}26;color:${e.color};margin-right:0.35rem;">${e.code}</span>
+              <strong>${e.nombre}</strong>
+            </td>
+            <td class="col-mono" style="white-space:nowrap;">
+              <span class="adp-weight-bar"><span style="width:${barW.toFixed(0)}%;background:${e.color};"></span></span>
+              <strong>${wPct}%</strong>
+            </td>
+            <td class="col-mono" style="font-weight:700;">${e.acierto.toFixed(1)}%</td>
+            <td class="col-mono" style="color:var(--text-muted);">${e.top3.toFixed(1)}%</td>
+            <td class="col-mono" style="font-weight:700;color:${e.color};">${picks}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    const pesosChart = document.getElementById('adpPesosChart');
+    if (pesosChart) {
+      const pIdx = Math.min(3, Math.max(0, state.adaptativo.pesosPos || 0));
+      pesosChart.innerHTML = AdpMod.renderPesosSVG(adp.posiciones[pIdx]);
     }
   }
 

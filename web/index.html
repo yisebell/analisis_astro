@@ -146,7 +146,12 @@
         <button class="nav-item" data-tab="polinomico">
           <span class="icon">📈</span>
           <span>Predictor Polinómico</span>
-          <span class="badge">4 Fórmulas</span>
+          <span class="badge">5 Fórmulas</span>
+        </button>
+        <button class="nav-item" data-tab="adaptativo">
+          <span class="icon">🧠</span>
+          <span>Adaptativo &amp; Semanal</span>
+          <span class="badge" style="color:var(--accent-cyan);">Pro</span>
         </button>
         <button class="nav-item" data-tab="quant">
           <span class="icon">🧪</span>
@@ -1647,9 +1652,9 @@
               <div class="panel-title">
                 <span style="font-size:1.35rem;">📈</span>
                 <div>
-                  <h3 style="font-size:1.2rem;font-weight:800;">Predictor Polinómico &amp; Tendencias Modulares (Base 10)</h3>
+                  <h3 style="font-size:1.2rem;font-weight:800;">Predictor Polinómico + Híbrido Secuencial (Base 10)</h3>
                   <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
-                    Trata cada dígito como una serie en aumento continuo (ej. 9→3 = +4, 3→7 = +4, 7→4 = +7, 4→4 = +0) y ajusta 4 fórmulas estadísticas independientes por posición.
+                    Trata cada dígito como una serie en aumento continuo y ajusta 4 fórmulas estadísticas + F5 Híbrida (fusión bayesiana con N-gramas secuenciales de dígitos y saltos Δ).
                   </p>
                 </div>
               </div>
@@ -1719,9 +1724,9 @@
               <div class="panel-title">
                 <span style="font-size:1.25rem;">🎯</span>
                 <div>
-                  <h3 style="font-size:1.15rem;font-weight:800;">Las 4 Predicciones Polinómicas (4 Cifras)</h3>
+                  <h3 style="font-size:1.15rem;font-weight:800;">Las 5 Predicciones Polinómicas &amp; Híbrida (4 Cifras)</h3>
                   <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
-                    Cada tarjeta ensambla la predicción independiente de los 4 dígitos usando su modelo matemático respectivo.
+                    Cada tarjeta ensambla la predicción de los 4 dígitos: F1–F4 por curvas modulares y F5 fusionando lo mejor del Predictor Polinómico con el Predictor Secuencial.
                   </p>
                 </div>
               </div>
@@ -1784,6 +1789,207 @@
                     <!-- Inyectado por JS -->
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================================================================
+             TAB 10B2: PREDICTOR ADAPTATIVO & MÓDULO SEMANAL / RANGO DE DÍAS
+             ================================================================ -->
+        <div id="tab-adaptativo" class="tab-pane">
+
+          <!-- BARRA DE CONTROLES -->
+          <div class="card-panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="flex-wrap:wrap;gap:1rem;">
+              <div class="panel-title">
+                <span style="font-size:1.35rem;">🧠</span>
+                <div>
+                  <h3 style="font-size:1.2rem;font-weight:800;">Predictor Adaptativo Día a Día &amp; Proyección Semanal</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
+                    Ensamble Bayesiano en línea (10 expertos: Secuencial N-grama, Markov Δ, Polinómico, Híbrido, Contexto del Día Sol↔Luna, Calendario, Régimen Reciente y Atraso) que aprende sorteo a sorteo sin fuga de datos.
+                  </p>
+                </div>
+              </div>
+
+              <div class="panel-actions" style="display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <label for="selectSorteoAdaptativo" style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">Punto de análisis:</label>
+                  <select id="selectSorteoAdaptativo" class="time-select" style="min-width:210px;font-size:0.8rem;padding:0.4rem 0.6rem;"></select>
+                </div>
+                <button id="btnResetSorteoAdaptativo" class="btn-action" title="Volver al último sorteo en vivo">
+                  <span>🔴 En Vivo</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Selector de Rango de Días + Estado de Contexto Diario -->
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.9rem;margin-top:0.9rem;padding-top:0.9rem;border-top:1px solid var(--border-subtle);">
+              <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                <span style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Rango de proyección:</span>
+                <div class="segmented-control" id="adpHorizonteControl">
+                  <button type="button" class="segmented-btn" data-adp-h="3">3 días</button>
+                  <button type="button" class="segmented-btn" data-adp-h="5">5 días</button>
+                  <button type="button" class="segmented-btn active" data-adp-h="7">7 días (Semanal)</button>
+                  <button type="button" class="segmented-btn" data-adp-h="10">10 días</button>
+                  <button type="button" class="segmented-btn" data-adp-h="14">14 días</button>
+                  <button type="button" class="segmented-btn" data-adp-h="30">30 días</button>
+                </div>
+              </div>
+
+              <div id="adpContextoBadges" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;"></div>
+            </div>
+
+            <!-- Panel de Validación Histórica (solo en modo simulación) -->
+            <div id="panelBacktestAdaptativo" style="display:none;margin-top:1rem;background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.35);border-radius:var(--radius-md);padding:1rem;"></div>
+          </div>
+
+          <!-- SECCIÓN 1: PRONÓSTICO DEL PRÓXIMO SORTEO (DÍA A DÍA) -->
+          <div class="adp-hero-grid" id="adpHeroGrid" style="margin-bottom:1.5rem;"></div>
+
+          <!-- DISTRIBUCIÓN DE PROBABILIDAD POR DÍGITO (D1..D4) -->
+          <div class="card-panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="margin-bottom:0.75rem;">
+              <div class="panel-title">
+                <span style="font-size:1.2rem;">📊</span>
+                <div>
+                  <h3 style="font-size:1.05rem;font-weight:800;">Probabilidad Calibrada por Posición (Próximo Sorteo)</h3>
+                  <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Fusión bayesiana de los 10 expertos para cada dígito. Las barras sobre la línea del 10% indican señal positiva acumulada.
+                  </p>
+                </div>
+              </div>
+              <span id="adpEvalBadge" class="badge badge-primary" style="font-size:0.74rem;">Walk-Forward</span>
+            </div>
+            <div id="adpDistGrid" class="adp-dist-grid"></div>
+          </div>
+
+          <!-- SECCIÓN 2: MÓDULO SEMANAL / RANGO DE DÍAS -->
+          <div class="card-panel" style="margin-bottom:1.5rem;">
+            <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem;margin-bottom:0.85rem;">
+              <div class="panel-title">
+                <span style="font-size:1.3rem;">📅</span>
+                <div>
+                  <h3 id="adpHorizonteTitulo" style="font-size:1.15rem;font-weight:800;">Proyección Semanal / Rango de 7 Días</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    Calcula la probabilidad acumulada de que cada dígito, terminal (2C/3C) o número salga <strong>al menos una vez</strong> durante el rango seleccionado, combinando día de la semana y régimen actual.
+                  </p>
+                </div>
+              </div>
+              <span id="adpHorizonteRangoBadge" class="badge badge-info" style="font-size:0.75rem;">Rango</span>
+            </div>
+
+            <!-- Top Números 4C + Terminales 2C y 3C del Rango -->
+            <div id="adpHorizonteTopGrid" class="adp-horizon-top-grid" style="margin-bottom:1.15rem;"></div>
+
+            <!-- Cronograma Día por Día -->
+            <div style="margin-bottom:1.15rem;">
+              <h4 style="font-size:0.82rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.6rem;">
+                Cronograma Día por Día del Rango Seleccionado
+              </h4>
+              <div class="table-responsive">
+                <table class="data-table" style="font-size:0.8rem;">
+                  <thead>
+                    <tr>
+                      <th>Día</th>
+                      <th>Fecha</th>
+                      <th>Número Sugerido</th>
+                      <th>Signo</th>
+                      <th>Top 3 por Posición (D1 · D2 · D3 · D4)</th>
+                      <th>Terminal 2C Top</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyAdpDias"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Gráfico y Backtesting Multi-Horizonte + Plan de Cobertura -->
+            <div class="adp-bt-split">
+              <div>
+                <h4 style="font-size:0.82rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.5rem;">
+                  Curva de Precisión Real por Rango de Días (Backtest Sin Fuga)
+                </h4>
+                <div id="adpHorizonteChart"></div>
+                <div class="table-responsive" style="margin-top:0.75rem;">
+                  <table class="data-table" style="font-size:0.77rem;">
+                    <thead>
+                      <tr>
+                        <th>Rango</th>
+                        <th>Top-10 2C Real</th>
+                        <th>Azar 2C</th>
+                        <th>Ventaja</th>
+                        <th>Top-3 Díg. Real</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyAdpHorizontes"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h4 style="font-size:0.82rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.5rem;">
+                  Plan de Cobertura de Terminales 2C en el Rango
+                </h4>
+                <p style="font-size:0.76rem;color:var(--text-muted);margin-bottom:0.6rem;">
+                  Probabilidad estimada de acertar al menos un terminal 2C jugando el Top-K del rango durante los días elegidos.
+                </p>
+                <div class="table-responsive">
+                  <table class="data-table" style="font-size:0.78rem;">
+                    <thead>
+                      <tr>
+                        <th>Tamaño Cartera</th>
+                        <th>Prob. Modelo</th>
+                        <th>Prob. Azar</th>
+                        <th>Ventaja</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyAdpCobertura"></tbody>
+                  </table>
+                </div>
+                <div id="adpDigAcumBox" style="margin-top:0.85rem;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 3: ARENA DE LOS 10 EXPERTOS Y EVOLUCIÓN DE PESOS -->
+          <div class="card-panel" style="margin-bottom:2rem;">
+            <div class="panel-header" style="flex-wrap:wrap;gap:0.75rem;margin-bottom:0.85rem;">
+              <div class="panel-title">
+                <span style="font-size:1.25rem;">⚖️</span>
+                <div>
+                  <h3 style="font-size:1.1rem;font-weight:800;">Arena de los 10 Expertos &amp; Evolución de Pesos (Aprendizaje en Línea)</h3>
+                  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">
+                    El algoritmo premia automáticamente a los expertos con mejor calibración reciente y reduce el peso de los que fallan.
+                  </p>
+                </div>
+              </div>
+              <div class="segmented-control" id="adpPesosPosControl">
+                <button type="button" class="segmented-btn active" data-adp-pos="0">D1</button>
+                <button type="button" class="segmented-btn" data-adp-pos="1">D2</button>
+                <button type="button" class="segmented-btn" data-adp-pos="2">D3</button>
+                <button type="button" class="segmented-btn" data-adp-pos="3">D4</button>
+              </div>
+            </div>
+
+            <div class="adp-bt-split">
+              <div class="table-responsive">
+                <table class="data-table" style="font-size:0.78rem;">
+                  <thead>
+                    <tr>
+                      <th>Experto</th>
+                      <th>Peso</th>
+                      <th>Exacto</th>
+                      <th>Top-3</th>
+                      <th>D1 / D2 / D3 / D4</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyAdpExpertos"></tbody>
+                </table>
+              </div>
+              <div>
+                <div id="adpPesosChart"></div>
               </div>
             </div>
           </div>
@@ -1941,6 +2147,7 @@
   <script src="js/auth.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/polynomial.js"></script>
+  <script src="js/adaptive.js"></script>
   <script src="js/quant.js"></script>
   <script src="js/app.js"></script>
 </body>

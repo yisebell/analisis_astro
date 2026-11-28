@@ -62,6 +62,17 @@ window.AstroPolynomial = (function () {
       colorSoft: 'rgba(245, 158, 11, 0.16)',
       serie: 'saltos',
       ecuacionTipo: 'y(x) = c₀ + c₁x + c₂cos(ωx) + c₃sin(ωx)'
+    },
+    {
+      id: 'f5',
+      code: 'F5',
+      nombre: 'Híbrida Polinómica × Secuencial',
+      nombreCorto: 'Híbrida Sec',
+      subtitulo: 'Fusiona las 4 curvas polinómicas con N-gramas históricos de dígitos y saltos Δ',
+      color: '#ec4899',
+      colorSoft: 'rgba(236, 72, 153, 0.16)',
+      serie: 'hibrida',
+      ecuacionTipo: 'P(d) ∝ Poly(F1..F4) · Sec(N-gram) · Δ-Ngram'
     }
   ];
 
@@ -405,6 +416,181 @@ window.AstroPolynomial = (function () {
     };
   }
 
+  /**
+   * F5: Modelo Híbrido Polinómico × Secuencial (sin fuga de datos)
+   * Combina:
+   *  1) Núcleo circular suave de las 4 fórmulas polinómicas F1..F4 ponderado por R²
+   *  2) N-gramas multi-profundidad de dígitos (lo mejor del Predictor Secuencial, L=2..6)
+   *     con suavizado Dirichlet y confianza por tamaño de muestra
+   *  3) N-gramas de saltos modulares Δ (L=1..3) sobre el histórico estrictamente previo
+   */
+  function fitF5HibridaSecuencial(sorteos, targetIdx, pos, f1to4, ultimoDigito, saltosVentana) {
+    const total = sorteos.length;
+
+    // 1. Distribución polinómica circular suave a partir de F1..F4
+    const pPoly = new Array(10).fill(0);
+    let sumPoly = 0;
+    for (let k = 0; k < f1to4.length; k++) {
+      const fk = f1to4[k];
+      const wk = 0.5 + (isFinite(fk.r2) ? fk.r2 : 0);
+      for (let d = 0; d < 10; d++) {
+        const dist = distCircular(d, fk.digitoPred);
+        const val = wk * Math.exp(-(dist * dist) / (2 * 1.15 * 1.15));
+        pPoly[d] += val;
+        sumPoly += val;
+      }
+    }
+    for (let d = 0; d < 10; d++) {
+      pPoly[d] = 0.75 * (sumPoly > 0 ? pPoly[d] / sumPoly : 0.1) + 0.025;
+    }
+
+    // Extraer dígito rápido de un sorteo
+    const digAt = (idx) => {
+      const s = sorteos[idx];
+      if (s.d && s.d.length === 4) return s.d[pos];
+      return parseInt(s.n[pos], 10);
+    };
+
+    // 2. N-gramas de dígitos (estrictamente i > targetIdx)
+    const maxL = Math.min(6, total - targetIdx);
+    const seqDig = [];
+    for (let k = 0; k < maxL; k++) seqDig.push(digAt(targetIdx + k));
+
+    const pSec = new Array(10).fill(0);
+    let wSumSec = 0;
+    let lMaxDig = 0;
+    let matchesDig = 0;
+
+    for (let L = 2; L <= maxL; L++) {
+      const counts = new Array(10).fill(0);
+      let tot = 0;
+      const limit = total - L;
+      for (let i = targetIdx + 1; i <= limit; i++) {
+        let ok = true;
+        for (let k = 0; k < L; k++) {
+          if (digAt(i + k) !== seqDig[k]) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) {
+          counts[digAt(i - 1)]++;
+          tot++;
+        }
+      }
+      if (tot > 0) {
+        lMaxDig = L;
+        matchesDig = tot;
+        const conf = tot / (tot + 5);
+        const wL = Math.pow(L, 1.5) * conf;
+        for (let d = 0; d < 10; d++) {
+          pSec[d] += wL * ((counts[d] + 0.5) / (tot + 5));
+        }
+        wSumSec += wL;
+      } else {
+        break; // Si no hay coincidencias de longitud L, tampoco habrá de L+1
+      }
+    }
+    if (wSumSec > 0) {
+      for (let d = 0; d < 10; d++) pSec[d] = 0.85 * (pSec[d] / wSumSec) + 0.015;
+    } else {
+      for (let d = 0; d < 10; d++) pSec[d] = 0.1;
+    }
+
+    // 3. N-gramas de saltos modulares Δ (L = 1..3, estrictamente previos)
+    const maxLD = Math.min(3, saltosVentana.length);
+    // saltosVentana está en orden cronológico; los más recientes están al final
+    const patDelta = [];
+    for (let k = 0; k < maxLD; k++) patDelta.push(saltosVentana[saltosVentana.length - 1 - k]);
+
+    const pDelta = new Array(10).fill(0);
+    let wSumDelta = 0;
+    let lMaxDelta = 0;
+    let matchesDelta = 0;
+
+    for (let L = 1; L <= maxLD; L++) {
+      const counts = new Array(10).fill(0);
+      let tot = 0;
+      const limit = total - L - 1;
+      for (let i = targetIdx + 1; i <= limit; i++) {
+        let ok = true;
+        for (let k = 0; k < L; k++) {
+          const dHist = (digAt(i + k) - digAt(i + k + 1) + 10) % 10;
+          if (dHist !== patDelta[k]) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) {
+          const nextDelta = (digAt(i - 1) - digAt(i) + 10) % 10;
+          counts[nextDelta]++;
+          tot++;
+        }
+      }
+      if (tot > 0) {
+        lMaxDelta = L;
+        matchesDelta = tot;
+        const conf = tot / (tot + 6);
+        const wL = Math.pow(L, 1.4) * conf;
+        for (let delta = 0; delta < 10; delta++) {
+          const targetDigit = (ultimoDigito + delta) % 10;
+          pDelta[targetDigit] += wL * ((counts[delta] + 0.6) / (tot + 6));
+        }
+        wSumDelta += wL;
+      } else {
+        break;
+      }
+    }
+    if (wSumDelta > 0) {
+      for (let d = 0; d < 10; d++) pDelta[d] = 0.85 * (pDelta[d] / wSumDelta) + 0.015;
+    } else {
+      for (let d = 0; d < 10; d++) pDelta[d] = 0.1;
+    }
+
+    // 4. Fusión Bayesiana (Producto de Expertos log-lineal)
+    const pFinal = new Array(10).fill(0);
+    let sumF = 0;
+    for (let d = 0; d < 10; d++) {
+      const v = Math.pow(pPoly[d], 0.42) * Math.pow(pSec[d], 0.36) * Math.pow(pDelta[d], 0.22);
+      pFinal[d] = v;
+      sumF += v;
+    }
+    let digitoPred = 0;
+    let maxProb = -1;
+    for (let d = 0; d < 10; d++) {
+      pFinal[d] = sumF > 0 ? pFinal[d] / sumF : 0.1;
+      if (pFinal[d] > maxProb) {
+        maxProb = pFinal[d];
+        digitoPred = d;
+      }
+    }
+
+    const saltoImplicito = (digitoPred - ultimoDigito + 10) % 10;
+    const probPct = Math.round(maxProb * 1000) / 10;
+    // Confianza normalizada (equivalente visual a R² para la tabla)
+    const confianzaNorm = Math.min(0.99, Math.max(0, (maxProb - 0.1) / 0.18 + 0.35));
+
+    const formulaStr =
+      `Poly(F1..F4) × Sec(L=${lMaxDig || 1}, ${matchesDig}m) × Δ(L=${lMaxDelta || 1}, ${matchesDelta}m) → ${probPct}%`;
+
+    return {
+      id: 'f5',
+      coef: { lMaxDig, matchesDig, lMaxDelta, matchesDelta, probPct },
+      evalFn: null,
+      fitted: [],
+      xNext: saltosVentana.length + 1,
+      valorPredicho: saltoImplicito,
+      saltoImplicito,
+      digitoPred,
+      probabilidad: maxProb,
+      probPct,
+      distribucion: pFinal,
+      r2: confianzaNorm,
+      rmse: Math.max(0, (1 - maxProb) * 2.5),
+      formulaStr
+    };
+  }
+
   // ============================================================================
   // ANÁLISIS COMPLETO DE UNA POSICIÓN Y DE UN SORTEO
   // ============================================================================
@@ -412,7 +598,7 @@ window.AstroPolynomial = (function () {
   /**
    * Analiza los 4 dígitos tomando una ventana de W sorteos desde targetIdx hacia atrás.
    */
-  function evaluarVentana(sorteos, targetIdx, windowSize) {
+  function evaluarVentana(sorteos, targetIdx, windowSize, incluirHibrida = true) {
     const sliceDesc = sorteos.slice(targetIdx, targetIdx + windowSize);
     if (sliceDesc.length < 3) return null;
 
@@ -421,6 +607,7 @@ window.AstroPolynomial = (function () {
     const W = crono.length;
     const nSaltos = W - 1;
 
+    const metaActiva = incluirHibrida ? FORMULA_META : FORMULA_META.slice(0, 4);
     const posiciones = [];
 
     for (let pos = 0; pos < 4; pos++) {
@@ -445,15 +632,20 @@ window.AstroPolynomial = (function () {
       const f4 = fitF4ArmonicaSaltos(xsD, saltos, ultimoDigito);
 
       const formulas = [f1, f2, f3, f4];
+      if (incluirHibrida) {
+        const f5 = fitF5HibridaSecuencial(sorteos, targetIdx, pos, formulas, ultimoDigito, saltos);
+        formulas.push(f5);
+      }
 
-      // Consenso: dígito más votado entre las 4 fórmulas (desempate por R²)
+      // Consenso: dígito más votado entre las fórmulas (F5 aporta desempate ponderado)
       const votos = {};
       formulas.forEach(f => {
-        if (!votos[f.digitoPred]) votos[f.digitoPred] = { count: 0, r2Sum: 0, digit: f.digitoPred };
+        if (!votos[f.digitoPred]) votos[f.digitoPred] = { count: 0, weight: 0, r2Sum: 0, digit: f.digitoPred };
         votos[f.digitoPred].count++;
+        votos[f.digitoPred].weight += (f.id === 'f5' ? 1.35 : 1);
         votos[f.digitoPred].r2Sum += f.r2;
       });
-      const rankingVotos = Object.values(votos).sort((a, b) => b.count - a.count || b.r2Sum - a.r2Sum);
+      const rankingVotos = Object.values(votos).sort((a, b) => b.weight - a.weight || b.count - a.count || b.r2Sum - a.r2Sum);
       const consenso = rankingVotos[0];
 
       // Promedio de saltos en esta ventana
@@ -474,19 +666,25 @@ window.AstroPolynomial = (function () {
       });
     }
 
-    // Construir las 4 predicciones de 4 cifras (una por fórmula)
-    const predicciones = FORMULA_META.map((meta, fIdx) => {
+    // Construir las predicciones de 4 cifras (una por fórmula)
+    const predicciones = metaActiva.map((meta, fIdx) => {
       const digitosPred = posiciones.map(p => p.formulas[fIdx].digitoPred);
       const saltosPred = posiciones.map(p => mod10(p.formulas[fIdx].digitoPred - p.ultimoDigito));
       const r2Avg = posiciones.reduce((acc, p) => acc + p.formulas[fIdx].r2, 0) / 4;
       const rmseAvg = posiciones.reduce((acc, p) => acc + p.formulas[fIdx].rmse, 0) / 4;
+      const extra = meta.id === 'f5'
+        ? {
+            probMedia: Math.round((posiciones.reduce((acc, p) => acc + (p.formulas[fIdx].probPct || 10), 0) / 4) * 10) / 10
+          }
+        : null;
       return {
         ...meta,
         numero: digitosPred.join(''),
         digitos: digitosPred,
         saltos: saltosPred,
         r2Avg,
-        rmseAvg
+        rmseAvg,
+        extra
       };
     });
 
@@ -926,8 +1124,8 @@ window.AstroPolynomial = (function () {
     const yAzar10 = toY(10);
     const yAzar30 = toY(30);
 
-    const groupW = plotW / 4;
-    const barW = Math.min(34, groupW * 0.28);
+    const groupW = plotW / Math.max(1, backtest.stats.length);
+    const barW = Math.min(30, groupW * 0.28);
 
     const bars = backtest.stats
       .map((s, i) => {
@@ -979,6 +1177,7 @@ window.AstroPolynomial = (function () {
   return {
     FORMULA_META,
     computePredictorPolinomico,
+    evaluarVentana,
     renderChartSaltosSVG,
     renderChartAcumuladoSVG,
     renderChartBacktestSVG,
