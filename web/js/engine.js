@@ -1728,6 +1728,205 @@ window.AstroEngine = (function () {
       });
 
       return top8;
+    },
+
+    /**
+     * ==============================================================================
+     * ANÁLISIS DE RESULTADOS & UMBRALES (NÚMEROS Y DISTANCIAS BASE 10)
+     * ==============================================================================
+     * Replica el cuadro de analisis_resultados.py directamente en el navegador y
+     * extiende exactamente el mismo análisis a las Distancias Base 10 (db10):
+     *  - Top 10 dígitos más frecuentes por posición (1º..10º)
+     *  - Combinaciones 2D (últimos 2), 3D (últimos 3) y 4D (completas) que superan
+     *    el umbral estadístico dinámico (ceil(N * factor)), con frecuencia y sorteos s/s
+     *  - En modo Base 10, calcula el número equivalente proyectado desde el último sorteo
+     */
+    computeAnalisisResultados: function (sorteos, opts) {
+      if (!Array.isArray(sorteos) || sorteos.length === 0) return null;
+      opts = opts || {};
+
+      const modo = (opts.modo === 'base10') ? 'base10' : 'numeros';
+      const loteria = (opts.loteria || 'luna').toLowerCase();
+      const cantidadDias = (typeof opts.cantidadDias === 'number' && !isNaN(opts.cantidadDias)) ? opts.cantidadDias : 3652;
+      const ordenarPor = opts.ordenarPor || 'freq_dias';
+      const umbralesCustom = opts.umbralesCustom || {};
+
+      // Dataset base: en modo base10 excluimos el sorteo más antiguo sin predecesor
+      const totalBD = sorteos.length;
+      const maxIdxValido = (modo === 'base10' && totalBD > 1) ? totalBD - 1 : totalBD;
+
+      // Fecha de inicio según cantidadDias (relativa al sorteo más reciente de la BD)
+      const fechaUltimo = sorteos[0].f;
+      const fechaMasAntigua = sorteos[maxIdxValido - 1] ? sorteos[maxIdxValido - 1].f : fechaUltimo;
+      let fechaInicioAnalisis = fechaMasAntigua;
+
+      if (cantidadDias > 0) {
+        const dtMax = new Date(fechaUltimo + 'T12:00:00Z');
+        dtMax.setUTCDate(dtMax.getUTCDate() - cantidadDias);
+        const fCalc = dtMax.toISOString().slice(0, 10);
+        fechaInicioAnalisis = fCalc > fechaMasAntigua ? fCalc : fechaMasAntigua;
+      }
+
+      // Helper para extraer el código de 4 dígitos según el modo
+      const getCodigo = (s) => {
+        if (modo === 'base10') {
+          if (s.db10 && String(s.db10).length === 4) return String(s.db10);
+          if (Array.isArray(s.c) && s.c.length === 4) return s.c.join('');
+          return '0000';
+        }
+        return pad(s.n || 0, 4);
+      };
+
+      // Último índice de aparición (sorteos s/s = idx en orden descendente) sobre toda la BD
+      const lastSeen2D = Object.create(null);
+      const lastSeen3D = Object.create(null);
+      const lastSeen4D = Object.create(null);
+      const lastFecha2D = Object.create(null);
+      const lastFecha3D = Object.create(null);
+      const lastFecha4D = Object.create(null);
+
+      // Conteos dentro de la ventana fecha >= fechaInicioAnalisis
+      const posCounts = [
+        new Array(10).fill(0),
+        new Array(10).fill(0),
+        new Array(10).fill(0),
+        new Array(10).fill(0)
+      ];
+      const freq2D = Object.create(null);
+      const freq3D = Object.create(null);
+      const freq4D = Object.create(null);
+      let totalVentana = 0;
+
+      for (let i = 0; i < maxIdxValido; i++) {
+        const s = sorteos[i];
+        const cod = getCodigo(s);
+        if (cod.length !== 4) continue;
+        const c2 = cod.slice(2, 4);
+        const c3 = cod.slice(1, 4);
+        const c4 = cod;
+
+        // Como sorteos está en orden descendente (más reciente = índice 0),
+        // la primera vez que vemos un código nos da exactamente su atraso en sorteos (i)
+        if (lastSeen2D[c2] === undefined) { lastSeen2D[c2] = i; lastFecha2D[c2] = s.f; }
+        if (lastSeen3D[c3] === undefined) { lastSeen3D[c3] = i; lastFecha3D[c3] = s.f; }
+        if (lastSeen4D[c4] === undefined) { lastSeen4D[c4] = i; lastFecha4D[c4] = s.f; }
+
+        if (s.f >= fechaInicioAnalisis) {
+          totalVentana++;
+          const d0 = cod.charCodeAt(0) - 48;
+          const d1 = cod.charCodeAt(1) - 48;
+          const d2 = cod.charCodeAt(2) - 48;
+          const d3 = cod.charCodeAt(3) - 48;
+          if (d0 >= 0 && d0 <= 9) posCounts[0][d0]++;
+          if (d1 >= 0 && d1 <= 9) posCounts[1][d1]++;
+          if (d2 >= 0 && d2 <= 9) posCounts[2][d2]++;
+          if (d3 >= 0 && d3 <= 9) posCounts[3][d3]++;
+
+          freq2D[c2] = (freq2D[c2] || 0) + 1;
+          freq3D[c3] = (freq3D[c3] || 0) + 1;
+          freq4D[c4] = (freq4D[c4] || 0) + 1;
+        }
+      }
+
+      // Top 10 dígitos más frecuentes por posición (1º..10º)
+      const topsPosicion = posCounts.map((arr, pos) => {
+        const items = arr.map((count, digit) => ({
+          digit: String(digit),
+          count: count,
+          pct: totalVentana > 0 ? Math.round((count / totalVentana) * 1000) / 10 : 0
+        }));
+        items.sort((a, b) => b.count - a.count || a.digit.localeCompare(b.digit));
+        return {
+          pos: pos,
+          label: modo === 'base10' ? `Salto Δ${pos + 1}` : `Dígito ${pos + 1}`,
+          items: items
+        };
+      });
+
+      // Factores estadísticos calibrados (basados en analisis_resultados.py, calibrados
+      // para que Sol, Luna y Combinados arrojen combinaciones útiles en cualquier ventana)
+      const factoresPorLot = {
+        sol: { f2: 0.008, f3: 0.0008, f4: 0.00004 },
+        luna: { f2: 0.008, f3: 0.0008, f4: 0.00004 },
+        combinados: { f2: 0.01, f3: 0.0012, f4: 0.0001 }
+      };
+      const fLot = factoresPorLot[loteria] || factoresPorLot.luna;
+
+      const calcUmbralAuto = (factor) => Math.max(Math.ceil(totalVentana * factor), 2);
+      const umbralAuto = {
+        u2: calcUmbralAuto(fLot.f2),
+        u3: calcUmbralAuto(fLot.f3),
+        u4: calcUmbralAuto(fLot.f4)
+      };
+
+      const parseUmbral = (val, fallback) => {
+        if (val === null || val === undefined || val === '') return fallback;
+        const n = parseInt(val, 10);
+        return (!isNaN(n) && n >= 0) ? n : fallback;
+      };
+
+      const umbral2D = parseUmbral(umbralesCustom.u2, umbralAuto.u2);
+      const umbral3D = parseUmbral(umbralesCustom.u3, umbralAuto.u3);
+      const umbral4D = parseUmbral(umbralesCustom.u4, umbralAuto.u4);
+
+      // Proyección de número equivalente hoy (solo aplica en modo base10)
+      const ultStr = pad(sorteos[0].n || 0, 4);
+      const ultDigs = [0, 1, 2, 3].map(k => parseInt(ultStr[k], 10));
+      const proyectarDesdeBase10 = (cod, startPos) => {
+        if (modo !== 'base10') return null;
+        let out = '';
+        for (let k = 0; k < cod.length; k++) {
+          const delta = parseInt(cod[k], 10);
+          out += String((ultDigs[startPos + k] + delta) % 10);
+        }
+        return out;
+      };
+
+      const buildLista = (freqMap, lastMap, fechaMap, umbral, startPos) => {
+        const res = [];
+        for (const codigo in freqMap) {
+          const freq = freqMap[codigo];
+          if (freq > umbral) {
+            res.push({
+              codigo: codigo,
+              freq: freq,
+              dias: lastMap[codigo] !== undefined ? lastMap[codigo] : totalBD,
+              ultimaFecha: fechaMap[codigo] || '',
+              equivHoy: proyectarDesdeBase10(codigo, startPos)
+            });
+          }
+        }
+        res.sort((a, b) => {
+          if (ordenarPor === 'dias') return (b.dias - a.dias) || (b.freq - a.freq) || a.codigo.localeCompare(b.codigo);
+          if (ordenarPor === 'freq') return (b.freq - a.freq) || a.codigo.localeCompare(b.codigo);
+          return (b.freq - a.freq) || (b.dias - a.dias) || a.codigo.localeCompare(b.codigo);
+        });
+        return res;
+      };
+
+      const data2D = buildLista(freq2D, lastSeen2D, lastFecha2D, umbral2D, 2);
+      const data3D = buildLista(freq3D, lastSeen3D, lastFecha3D, umbral3D, 1);
+      const data4D = buildLista(freq4D, lastSeen4D, lastFecha4D, umbral4D, 0);
+
+      return {
+        modo: modo,
+        loteria: loteria,
+        ultimoSorteo: sorteos[0],
+        fechaInicioAnalisis: fechaInicioAnalisis,
+        fechaUltimo: fechaUltimo,
+        cantidadDias: cantidadDias,
+        totalBD: totalBD,
+        totalVentana: totalVentana,
+        ordenarPor: ordenarPor,
+        umbralAuto: umbralAuto,
+        umbral2D: umbral2D,
+        umbral3D: umbral3D,
+        umbral4D: umbral4D,
+        topsPosicion: topsPosicion,
+        data2D: data2D,
+        data3D: data3D,
+        data4D: data4D
+      };
     }
   };
 })();

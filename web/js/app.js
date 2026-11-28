@@ -25,6 +25,24 @@
     cifras1: { sortCol: 'num', sortAsc: true },
     matrices: { ventana: 100 },
     distancias: { cifras: 4, posicion: 'final' },
+    resultados: {
+      modo: 'numeros', // 'numeros' | 'base10'
+      cantidadDias: 3652, // 10 años por defecto como analisis_resultados.py
+      ordenarPor: 'freq_dias', // 'freq_dias' | 'dias' | 'freq'
+      umbralesCustom: { u2: '', u3: '', u4: '' },
+      combosSearch: '',
+      comboSort: {
+        d2: { col: null, asc: false },
+        d3: { col: null, asc: false },
+        d4: { col: null, asc: false }
+      },
+      histFechaDesde: '2025-01-01',
+      histSearch: '',
+      histPage: 1,
+      histPageSize: 100,
+      histSortCol: 'fecha',
+      histSortAsc: false
+    },
     vecinos: { subTab: 'num', query: '', queryB10: '' },
     ultimos: { limit: 10 },
     evaluador: {
@@ -944,6 +962,178 @@
         mostrarToast('Regresando al sorteo actual en vivo (Adaptativo)', 'info');
       });
     }
+
+    // Análisis de Resultados & Umbrales (Números y Distancias Base 10)
+    const btnsResModo = document.querySelectorAll('[data-res-modo]');
+    btnsResModo.forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.resultados.modo = btn.getAttribute('data-res-modo') || 'numeros';
+        btnsResModo.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.resultados.comboSort = {
+          d2: { col: null, asc: false },
+          d3: { col: null, asc: false },
+          d4: { col: null, asc: false }
+        };
+        delete state.calculos.resultados;
+        renderTabActual();
+      });
+    });
+
+    const btnsResDias = document.querySelectorAll('[data-res-dias]');
+    btnsResDias.forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.resultados.cantidadDias = parseInt(btn.getAttribute('data-res-dias'), 10);
+        if (isNaN(state.resultados.cantidadDias)) state.resultados.cantidadDias = 3652;
+        btnsResDias.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        delete state.calculos.resultados;
+        renderTabActual();
+      });
+    });
+
+    const resOrdenSelect = document.getElementById('resOrdenSelect');
+    if (resOrdenSelect) {
+      resOrdenSelect.addEventListener('change', (e) => {
+        state.resultados.ordenarPor = e.target.value || 'freq_dias';
+        state.resultados.comboSort = {
+          d2: { col: null, asc: false },
+          d3: { col: null, asc: false },
+          d4: { col: null, asc: false }
+        };
+        delete state.calculos.resultados;
+        renderTabActual();
+      });
+    }
+
+    const bindUmbralInput = (elId, key) => {
+      const inp = document.getElementById(elId);
+      if (!inp) return;
+      inp.addEventListener('input', () => {
+        state.resultados.umbralesCustom[key] = inp.value.trim();
+        delete state.calculos.resultados;
+        renderTabActual();
+      });
+    };
+    bindUmbralInput('resUmbral2Input', 'u2');
+    bindUmbralInput('resUmbral3Input', 'u3');
+    bindUmbralInput('resUmbral4Input', 'u4');
+
+    const btnResResetUmbrales = document.getElementById('btnResResetUmbrales');
+    if (btnResResetUmbrales) {
+      btnResResetUmbrales.addEventListener('click', () => {
+        state.resultados.umbralesCustom = { u2: '', u3: '', u4: '' };
+        ['resUmbral2Input', 'resUmbral3Input', 'resUmbral4Input'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+        delete state.calculos.resultados;
+        renderTabActual();
+        mostrarToast('Umbrales automáticos restaurados', 'info');
+      });
+    }
+
+    const resCombosSearch = document.getElementById('resCombosSearch');
+    if (resCombosSearch) {
+      resCombosSearch.addEventListener('input', (e) => {
+        state.resultados.combosSearch = e.target.value.trim().toLowerCase();
+        renderResultadosCombos();
+      });
+    }
+
+    const resCombosGrid = document.getElementById('resCombosGrid');
+    if (resCombosGrid) {
+      resCombosGrid.addEventListener('click', (e) => {
+        const th = e.target.closest('th[data-res-csort]');
+        if (th) {
+          const tbl = th.getAttribute('data-res-ctbl');
+          const col = th.getAttribute('data-res-csort');
+          if (tbl && col && state.resultados.comboSort[tbl]) {
+            const cur = state.resultados.comboSort[tbl];
+            if (cur.col === col) cur.asc = !cur.asc;
+            else { cur.col = col; cur.asc = (col === 'codigo'); }
+            renderResultadosCombos();
+          }
+          return;
+        }
+        const b10Link = e.target.closest('[data-goto-b10]');
+        if (b10Link) {
+          const code = b10Link.getAttribute('data-goto-b10');
+          if (code && code.length === 4) {
+            state.vecinos.subTab = 'b10';
+            state.vecinos.queryB10 = code;
+            const inpB10 = document.getElementById('inputVecinosB10');
+            if (inpB10) inpB10.value = code;
+            document.querySelectorAll('[data-subtab]').forEach(b => {
+              b.classList.toggle('active', b.getAttribute('data-subtab') === 'b10');
+            });
+            setTab('vecinos');
+          }
+        }
+      });
+    }
+
+    const resHistFechaDesde = document.getElementById('resHistFechaDesde');
+    if (resHistFechaDesde) {
+      resHistFechaDesde.addEventListener('change', (e) => {
+        state.resultados.histFechaDesde = e.target.value || '2008-01-01';
+        state.resultados.histPage = 1;
+        renderResultadosHistorial();
+      });
+    }
+
+    const resHistSearch = document.getElementById('resHistSearch');
+    if (resHistSearch) {
+      resHistSearch.addEventListener('input', (e) => {
+        state.resultados.histSearch = e.target.value.trim().toLowerCase();
+        state.resultados.histPage = 1;
+        renderResultadosHistorial();
+      });
+    }
+
+    const resHistPageSize = document.getElementById('resHistPageSize');
+    if (resHistPageSize) {
+      resHistPageSize.addEventListener('change', (e) => {
+        const v = e.target.value;
+        state.resultados.histPageSize = v === 'all' ? 'all' : (parseInt(v, 10) || 100);
+        state.resultados.histPage = 1;
+        renderResultadosHistorial();
+      });
+    }
+
+    document.querySelectorAll('#tableResHist th[data-res-hsort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.getAttribute('data-res-hsort');
+        if (state.resultados.histSortCol === col) {
+          state.resultados.histSortAsc = !state.resultados.histSortAsc;
+        } else {
+          state.resultados.histSortCol = col;
+          state.resultados.histSortAsc = (col === 'idx');
+        }
+        state.resultados.histPage = 1;
+        renderResultadosHistorial();
+      });
+    });
+
+    const tbodyResHist = document.getElementById('tbodyResHist');
+    if (tbodyResHist) {
+      tbodyResHist.addEventListener('click', (e) => {
+        const b10Link = e.target.closest('[data-goto-b10]');
+        if (b10Link) {
+          const code = b10Link.getAttribute('data-goto-b10');
+          if (code && code.length === 4) {
+            state.vecinos.subTab = 'b10';
+            state.vecinos.queryB10 = code;
+            const inpB10 = document.getElementById('inputVecinosB10');
+            if (inpB10) inpB10.value = code;
+            document.querySelectorAll('[data-subtab]').forEach(b => {
+              b.classList.toggle('active', b.getAttribute('data-subtab') === 'b10');
+            });
+            setTab('vecinos');
+          }
+        }
+      });
+    }
   }
 
   // ============================================================================
@@ -1147,6 +1337,7 @@
       cifras1: ['Análisis 1 Cifra (0-9)', 'Frecuencia y atrasos posicionales con Score Ponderado (Hoja 1C)'],
       matrices: ['Matrices de Posición y Calor', 'Distribución porcentual por dígitos y ventanas de 10, 100, 1000 días (Hoja Matrices)'],
       distancias: ['Distancias & Base 10', 'Saltos modulares, tuplas repetidas y patrones en Base 10 (Hojas Distancias)'],
+      resultados: ['Análisis de Resultados & Umbrales', 'Top 10 por posición, combinaciones 2D/3D/4D sobre umbral y días s/s (Números y Distancias Base 10)'],
       vecinos: ['Buscador de Vecinos (Números y Distancias Base 10)', 'Historial de transiciones con sorteo anterior, posterior e intervalos (Hoja anterior_proximo y Base 10)'],
       evaluador: ['Radiografía de Apuestas', 'Evaluador rápido de listas de números con score estadístico (tabla_analisis_numeros.py)'],
       pronosticos: ['Pronósticos & Proyecciones', 'Modelado algorítmico combinando calor reciente, distancias y atrasos óptimos'],
@@ -1215,6 +1406,17 @@
     }
     if (tabId === 'distancias' && !state.calculos.distancias) {
       state.calculos.distancias = AstroEngine.computeDistancias(sorteos);
+    }
+    if (tabId === 'resultados' && !state.calculos.resultados) {
+      if (typeof AstroEngine.computeAnalisisResultados === 'function') {
+        state.calculos.resultados = AstroEngine.computeAnalisisResultados(sorteos, {
+          modo: state.resultados.modo,
+          loteria: state.loteria,
+          cantidadDias: state.resultados.cantidadDias,
+          ordenarPor: state.resultados.ordenarPor,
+          umbralesCustom: state.resultados.umbralesCustom
+        });
+      }
     }
     if (tabId === 'pronosticos' && !state.calculos.pronosticos) {
       state.calculos.pronosticos = AstroEngine.computePronosticos(sorteos);
@@ -1285,6 +1487,7 @@
       case 'cifras1': renderCifras1(); break;
       case 'matrices': renderMatrices(); break;
       case 'distancias': renderDistancias(); break;
+      case 'resultados': renderResultados(); break;
       case 'vecinos': renderVecinos(); break;
       case 'evaluador': renderEvaluador(); break;
       case 'pronosticos': renderPronosticos(); break;
@@ -2037,6 +2240,304 @@
           `;
         }).join('');
       }
+    }
+  }
+
+  // 7B. Análisis de Resultados & Umbrales (Números y Distancias Base 10)
+  function renderResultados() {
+    const res = state.calculos.resultados;
+    if (!res) return;
+
+    const esB10 = res.modo === 'base10';
+    const lotNombre = state.loteria === 'luna' ? 'Astro Luna' : (state.loteria === 'sol' ? 'Astro Sol' : 'Combinados');
+
+    // Títulos dinámicos según modo
+    const tit = document.getElementById('resTituloPrincipal');
+    if (tit) {
+      tit.textContent = esB10
+        ? `Análisis de Distancias Base 10 & Umbrales — ${lotNombre}`
+        : `Análisis de Resultados & Umbrales — ${lotNombre}`;
+    }
+    const sub = document.getElementById('resSubtituloPrincipal');
+    if (sub) {
+      sub.textContent = esB10
+        ? `Mismo ejercicio de frecuencias y umbrales aplicado a los saltos modulares Base 10 (db10), proyectando el número equivalente sobre el último sorteo (#${res.ultimoSorteo.n}).`
+        : 'Cuadro de frecuencias Top 10 por posición, combinaciones 2D/3D/4D que superan el umbral estadístico con días sin salir, e historial paginado.';
+    }
+
+    // Placeholders de umbrales con el valor automático
+    const u2In = document.getElementById('resUmbral2Input');
+    const u3In = document.getElementById('resUmbral3Input');
+    const u4In = document.getElementById('resUmbral4Input');
+    if (u2In) u2In.placeholder = `>${res.umbralAuto.u2}`;
+    if (u3In) u3In.placeholder = `>${res.umbralAuto.u3}`;
+    if (u4In) u4In.placeholder = `>${res.umbralAuto.u4}`;
+
+    // 1. 6 KPIs superiores
+    const kpiGrid = document.getElementById('resKpiGrid');
+    if (kpiGrid) {
+      kpiGrid.innerHTML = `
+        <div class="res-kpi-card">
+          <span class="res-kpi-label">Modo Activo</span>
+          <span class="res-kpi-value" style="color:${esB10 ? 'var(--accent-amber)' : 'var(--accent-cyan)'};">${esB10 ? 'Distancias Base 10' : 'Números (4C)'}</span>
+        </div>
+        <div class="res-kpi-card">
+          <span class="res-kpi-label">Inicio del Análisis</span>
+          <span class="res-kpi-value">${res.fechaInicioAnalisis}</span>
+        </div>
+        <div class="res-kpi-card">
+          <span class="res-kpi-label">Sorteos en Ventana</span>
+          <span class="res-kpi-value">${res.totalVentana.toLocaleString()} <small style="font-size:0.72rem;color:var(--text-muted);">/ ${res.totalBD.toLocaleString()}</small></span>
+        </div>
+        <div class="res-kpi-card">
+          <span class="res-kpi-label">Umbral 2 ${esB10 ? 'Saltos' : 'Dígitos'}</span>
+          <span class="res-kpi-value">&gt; ${res.umbral2D} <small style="font-size:0.76rem;color:var(--accent-cyan);">(${res.data2D.length})</small></span>
+        </div>
+        <div class="res-kpi-card">
+          <span class="res-kpi-label">Umbral 3 ${esB10 ? 'Saltos' : 'Dígitos'}</span>
+          <span class="res-kpi-value">&gt; ${res.umbral3D} <small style="font-size:0.76rem;color:var(--accent-purple);">(${res.data3D.length})</small></span>
+        </div>
+        <div class="res-kpi-card">
+          <span class="res-kpi-label">Umbral 4 ${esB10 ? 'Saltos' : 'Dígitos'}</span>
+          <span class="res-kpi-value">&gt; ${res.umbral4D} <small style="font-size:0.76rem;color:var(--accent-emerald);">(${res.data4D.length})</small></span>
+        </div>
+      `;
+    }
+
+    // 2. Top 10 por posición
+    const top10Tit = document.getElementById('resTop10Titulo');
+    if (top10Tit) {
+      top10Tit.textContent = esB10
+        ? 'Top 10 Saltos Base 10 (0–9) Más Frecuentes por Posición (1º a 10º)'
+        : 'Top 10 Dígitos Más Frecuentes por Posición (1º a 10º)';
+    }
+    const top10Badge = document.getElementById('resTop10Badge');
+    if (top10Badge) {
+      top10Badge.textContent = `${res.fechaInicioAnalisis} ➔ ${res.fechaUltimo} (${res.totalVentana.toLocaleString()} sorteos)`;
+    }
+
+    const tbodyTop10 = document.getElementById('tbodyResTop10');
+    if (tbodyTop10) {
+      tbodyTop10.innerHTML = res.topsPosicion.map(row => {
+        const celdas = row.items.map((it, rank) => `
+          <td title="${row.label} · ${esB10 ? 'Salto +' : 'Dígito '}${it.digit}: ${it.count} veces (${it.pct}%)">
+            <span class="res-digit-pill ${rank < 3 ? 'is-top' : ''}">${esB10 ? '+' + it.digit : it.digit}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);margin-left:0.2rem;">(${it.count})</span>
+          </td>
+        `).join('');
+        return `<tr><td>${row.label}</td>${celdas}</tr>`;
+      }).join('');
+    }
+
+    // 3. Combinaciones 2D, 3D, 4D que superan el umbral
+    renderResultadosCombos();
+
+    // 4. Historial paginado
+    renderResultadosHistorial();
+  }
+
+  function renderResultadosCombos() {
+    const res = state.calculos.resultados;
+    const grid = document.getElementById('resCombosGrid');
+    if (!res || !grid) return;
+
+    const esB10 = res.modo === 'base10';
+    const q = state.resultados.combosSearch || '';
+
+    const cTit = document.getElementById('resCombosTitulo');
+    if (cTit) {
+      cTit.textContent = esB10
+        ? 'Distancias Base 10 (2D / 3D / 4D) que Superan el Umbral Estadístico'
+        : 'Combinaciones (2D / 3D / 4D) que Superan el Umbral Estadístico';
+    }
+    const cSub = document.getElementById('resCombosSub');
+    if (cSub) {
+      cSub.textContent = esB10
+        ? `Columna "Equiv. Hoy" aplica el salto Base 10 al último sorteo (#${res.ultimoSorteo.n}). Clic en un código Base 10 de 4 cifras para abrir sus vecinos Base 10.`
+        : 'Haz clic en los encabezados de cada tabla para reordenar o en un número de 4 cifras para analizar sus vecinos.';
+    }
+
+    const configs = [
+      { key: 'd2', label: esB10 ? '2 Saltos Fin (Δ3–Δ4)' : '2 Dígitos (Fin)', umbral: res.umbral2D, data: res.data2D, color: 'var(--accent-cyan)', is4D: false },
+      { key: 'd3', label: esB10 ? '3 Saltos Fin (Δ2–Δ4)' : '3 Dígitos (Fin)', umbral: res.umbral3D, data: res.data3D, color: 'var(--accent-purple)', is4D: false },
+      { key: 'd4', label: esB10 ? '4 Saltos Completos (db10)' : '4 Dígitos (Completo)', umbral: res.umbral4D, data: res.data4D, color: 'var(--accent-emerald)', is4D: true }
+    ];
+
+    grid.innerHTML = configs.map(cfg => {
+      let lista = cfg.data;
+      if (q) {
+        lista = lista.filter(x =>
+          x.codigo.includes(q) || (x.equivHoy && x.equivHoy.includes(q))
+        );
+      }
+
+      const sortCfg = state.resultados.comboSort[cfg.key];
+      if (sortCfg && sortCfg.col) {
+        lista = lista.slice().sort((a, b) => {
+          let cmp = 0;
+          if (sortCfg.col === 'codigo') cmp = a.codigo.localeCompare(b.codigo);
+          else if (sortCfg.col === 'freq') cmp = a.freq - b.freq;
+          else if (sortCfg.col === 'dias') cmp = a.dias - b.dias;
+          else if (sortCfg.col === 'equivHoy') cmp = (a.equivHoy || '').localeCompare(b.equivHoy || '');
+          return sortCfg.asc ? cmp : -cmp;
+        });
+      }
+
+      const arrow = (col) => {
+        if (!sortCfg || sortCfg.col !== col) return '<span style="opacity:0.35;margin-left:2px;">↕</span>';
+        return sortCfg.asc ? ' ▲' : ' ▼';
+      };
+
+      const rowsHtml = lista.length === 0
+        ? `<tr><td colspan="${esB10 ? 4 : 3}" style="padding:1.25rem;color:var(--text-muted);font-size:0.78rem;">Sin combinaciones &gt; ${cfg.umbral}${q ? ` para "${q}"` : ''}. Puedes bajar el umbral arriba.</td></tr>`
+        : lista.map(item => {
+            const codeCell = (!esB10 && cfg.is4D)
+              ? `<span class="number-pill" data-num="${item.codigo}">${item.codigo}</span>`
+              : (esB10 && cfg.is4D)
+                ? `<button type="button" class="badge badge-warning" data-goto-b10="${item.codigo}" style="cursor:pointer;border:1px solid rgba(245,158,11,0.45);font-family:var(--font-mono);" title="Ver vecinos Base 10 de ${item.codigo}">${item.codigo}</button>`
+                : `<strong class="col-mono" style="color:${cfg.color};letter-spacing:0.06em;">${item.codigo}</strong>`;
+
+            const equivCell = esB10
+              ? (cfg.is4D
+                  ? `<td><span class="number-pill" data-num="${item.equivHoy}" title="Último #${res.ultimoSorteo.n} + B10 ${item.codigo}">${item.equivHoy}</span></td>`
+                  : `<td class="col-mono" style="font-weight:700;color:var(--accent-cyan);">${item.equivHoy}</td>`)
+              : '';
+
+            return `
+              <tr title="Última vez: ${item.ultimaFecha || 'N/A'}">
+                <td>${codeCell}</td>
+                <td><span class="badge badge-info" style="font-family:var(--font-mono);">${item.freq}</span></td>
+                <td><span class="badge badge-warning" style="font-family:var(--font-mono);">${item.dias} s</span></td>
+                ${equivCell}
+              </tr>
+            `;
+          }).join('');
+
+      return `
+        <div class="res-combo-card" style="border-top:3px solid ${cfg.color};">
+          <div class="res-combo-header">
+            <h4>${cfg.label} &gt; ${cfg.umbral}</h4>
+            <span class="badge badge-primary" style="font-size:0.72rem;">${lista.length} comb.</span>
+          </div>
+          <div class="res-combo-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th data-res-ctbl="${cfg.key}" data-res-csort="codigo">${esB10 ? 'Base 10' : 'Número'}${arrow('codigo')}</th>
+                  <th data-res-ctbl="${cfg.key}" data-res-csort="freq">Freq${arrow('freq')}</th>
+                  <th data-res-ctbl="${cfg.key}" data-res-csort="dias">Días s/s${arrow('dias')}</th>
+                  ${esB10 ? `<th data-res-ctbl="${cfg.key}" data-res-csort="equivHoy">Equiv. Hoy${arrow('equivHoy')}</th>` : ''}
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderResultadosHistorial() {
+    const sorteos = obtenerSorteosFiltrados();
+    const tbody = document.getElementById('tbodyResHist');
+    const counterBadge = document.getElementById('resHistCounterBadge');
+    const pagEl = document.getElementById('resHistPagination');
+    if (!tbody || !sorteos.length) return;
+
+    const cfg = state.resultados;
+    const fechaDesde = cfg.histFechaDesde || '2025-01-01';
+    const q = cfg.histSearch || '';
+
+    // Sincronizar valor del input fecha si es la primera vez
+    const inpFecha = document.getElementById('resHistFechaDesde');
+    if (inpFecha && inpFecha.value !== fechaDesde) inpFecha.value = fechaDesde;
+
+    // Filtrar desde fechaDesde (orden cronológico descendente por defecto, índice #1..N)
+    const filtradosBase = [];
+    for (let i = 0; i < sorteos.length; i++) {
+      const s = sorteos[i];
+      if (s.f >= fechaDesde) {
+        filtradosBase.push({
+          idx: i + 1,
+          fecha: s.f,
+          numero: s.n,
+          db10: s.db10 || (Array.isArray(s.c) ? s.c.join('') : '0000'),
+          signo: s.s || ''
+        });
+      }
+    }
+
+    let lista = q
+      ? filtradosBase.filter(r =>
+          r.fecha.toLowerCase().includes(q) ||
+          r.numero.includes(q) ||
+          r.db10.includes(q) ||
+          r.signo.toLowerCase().includes(q)
+        )
+      : filtradosBase;
+
+    // Ordenamiento
+    const col = cfg.histSortCol || 'fecha';
+    const asc = !!cfg.histSortAsc;
+    lista = lista.slice().sort((a, b) => {
+      let cmp = 0;
+      if (col === 'idx') cmp = a.idx - b.idx;
+      else if (col === 'fecha') cmp = a.fecha.localeCompare(b.fecha);
+      else if (col === 'numero') cmp = a.numero.localeCompare(b.numero);
+      else if (col === 'db10') cmp = a.db10.localeCompare(b.db10);
+      else if (col === 'signo') cmp = a.signo.localeCompare(b.signo);
+      return asc ? cmp : -cmp;
+    });
+
+    const total = lista.length;
+    const pageSize = cfg.histPageSize === 'all' ? Math.max(1, total) : (cfg.histPageSize || 100);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (cfg.histPage > totalPages) cfg.histPage = totalPages;
+    if (cfg.histPage < 1) cfg.histPage = 1;
+
+    const start = cfg.histPageSize === 'all' ? 0 : (cfg.histPage - 1) * pageSize;
+    const end = cfg.histPageSize === 'all' ? total : Math.min(start + pageSize, total);
+    const slice = lista.slice(start, end);
+
+    if (counterBadge) {
+      counterBadge.textContent = total > 0
+        ? `Mostrando ${start + 1}–${end} de ${total.toLocaleString()} registros`
+        : '0 registros';
+    }
+
+    if (slice.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.25rem;color:var(--text-muted);">No hay sorteos que coincidan con el filtro seleccionado.</td></tr>';
+    } else {
+      tbody.innerHTML = slice.map(r => `
+        <tr>
+          <td class="col-mono" style="color:var(--text-muted);">${r.idx}</td>
+          <td class="col-mono">${r.fecha}</td>
+          <td><span class="number-pill" data-num="${r.numero}">${r.numero}</span></td>
+          <td>
+            <button type="button" class="badge badge-warning" data-goto-b10="${r.db10}" style="cursor:pointer;border:1px solid rgba(245,158,11,0.4);font-family:var(--font-mono);" title="Buscar vecinos Base 10 de ${r.db10}">${r.db10}</button>
+          </td>
+          <td>${renderSignoWithIcon(r.signo, 14)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Controles de paginación
+    if (pagEl) {
+      pagEl.innerHTML = `
+        <button type="button" class="btn-action" id="resHFirst" ${cfg.histPage <= 1 ? 'disabled' : ''} style="padding:0.25rem 0.5rem;font-size:0.74rem;">⏮</button>
+        <button type="button" class="btn-action" id="resHPrev" ${cfg.histPage <= 1 ? 'disabled' : ''} style="padding:0.25rem 0.5rem;font-size:0.74rem;">◀</button>
+        <span style="font-size:0.76rem;color:var(--text-muted);padding:0 0.35rem;font-family:var(--font-mono);">Pág. ${cfg.histPage}/${totalPages}</span>
+        <button type="button" class="btn-action" id="resHNext" ${cfg.histPage >= totalPages ? 'disabled' : ''} style="padding:0.25rem 0.5rem;font-size:0.74rem;">▶</button>
+        <button type="button" class="btn-action" id="resHLast" ${cfg.histPage >= totalPages ? 'disabled' : ''} style="padding:0.25rem 0.5rem;font-size:0.74rem;">⏭</button>
+      `;
+      const bFirst = document.getElementById('resHFirst');
+      const bPrev = document.getElementById('resHPrev');
+      const bNext = document.getElementById('resHNext');
+      const bLast = document.getElementById('resHLast');
+      if (bFirst) bFirst.onclick = () => { cfg.histPage = 1; renderResultadosHistorial(); };
+      if (bPrev) bPrev.onclick = () => { if (cfg.histPage > 1) { cfg.histPage--; renderResultadosHistorial(); } };
+      if (bNext) bNext.onclick = () => { if (cfg.histPage < totalPages) { cfg.histPage++; renderResultadosHistorial(); } };
+      if (bLast) bLast.onclick = () => { cfg.histPage = totalPages; renderResultadosHistorial(); };
     }
   }
 
